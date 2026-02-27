@@ -1,0 +1,7 @@
+project_id = "ygmkrjqjlgwzbmihevdd"
+
+[functions.parse-recipe]
+verify_jwt = false
+
+[functions.search-recipes]
+verify_jwt = false
