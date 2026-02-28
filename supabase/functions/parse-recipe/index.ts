@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,14 +12,14 @@ const SYSTEM_PROMPT = `You are a recipe parser. Given raw messy text (from Googl
 
 You MUST call the extract_recipe function with the extracted data. Be thorough:
 - Extract ALL ingredients, even if buried in paragraphs. Include amount and unit when available.
-- Convert instructions into clear numbered steps in Markdown format.
+- Convert instructions into clear numbered steps in Markdown format (use 1. 2. 3. etc).
 - Infer nutritional tags like: High Protein, Vegan, Vegetarian, Gluten-Free, Low Carb, Keto, Dairy-Free, Quick Meal.
 - Estimate prep_time_minutes, cook_time_minutes, total_time_minutes if mentioned or inferable.
 - Estimate servings if mentioned.`;
 
-const VISION_PROMPT = `You are a recipe extractor. Analyze this image of a recipe (could be a screenshot from Instagram, a photo of a recipe card, etc.) and extract the recipe.
+const VISION_PROMPT = `You are a recipe extractor. Analyze this image of a recipe (could be a screenshot from Instagram, a photo of a cookbook, a recipe card, etc.) and extract the recipe.
 
-You MUST call the extract_recipe function with the extracted data. Be thorough with ingredients and instructions.`;
+You MUST call the extract_recipe function with the extracted data. Be thorough with ingredients and instructions. Use numbered steps (1. 2. 3.) for instructions.`;
 
 const tools = [
   {
@@ -58,7 +59,19 @@ const tools = [
   },
 ];
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Try to extract OG image from a URL
+async function extractOgImage(url: string): Promise<string | null> {
+  try {
+    const resp = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, redirect: "follow" });
+    if (!resp.ok) return null;
+    const html = await resp.text();
+    const ogMatch = html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    return ogMatch?.[1] || null;
+  } catch {
+    return null;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -67,8 +80,7 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
-    // Get user from auth header
+
     const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
       global: { headers: { Authorization: authHeader! } },
     });
@@ -80,7 +92,7 @@ serve(async (req) => {
       });
     }
 
-    const { type, text, url, image } = await req.json();
+    const { type, text, url, image, reference_image_url } = await req.json();
 
     let messages: any[] = [];
 
@@ -122,9 +134,18 @@ serve(async (req) => {
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
       console.error("AI error:", aiResponse.status, errText);
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limited. Please try again shortly." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ error: "AI processing failed" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -132,16 +153,21 @@ serve(async (req) => {
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) {
       return new Response(JSON.stringify({ error: "AI could not parse the recipe" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const recipe = JSON.parse(toolCall.function.arguments);
 
-    // Generate embedding for semantic search
+    // Try to get OG image from URL
+    let imageUrl: string | null = null;
+    if (url) {
+      imageUrl = await extractOgImage(url);
+    }
+
+    // Generate embedding
     const embeddingText = `${recipe.title}. Ingredients: ${recipe.ingredients.map((i: any) => i.name).join(", ")}. ${recipe.instructions}. Tags: ${recipe.nutritional_tags.join(", ")}`;
-    
+
     const embResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
       method: "POST",
       headers: {
@@ -166,7 +192,7 @@ serve(async (req) => {
     const { error: insertError } = await adminClient.from("recipes").insert({
       user_id: user.id,
       title: recipe.title,
-      source: url ? "URL" : "Manual",
+      source: url ? "URL" : type === "scan_image" ? "Scan" : "Manual",
       source_url: url || null,
       ingredients: recipe.ingredients,
       instructions: recipe.instructions,
@@ -175,14 +201,15 @@ serve(async (req) => {
       total_time_minutes: recipe.total_time_minutes || null,
       servings: recipe.servings || null,
       nutritional_tags: recipe.nutritional_tags || [],
+      image_url: imageUrl,
+      reference_image_url: reference_image_url || null,
       embedding: embedding ? JSON.stringify(embedding) : null,
     });
 
     if (insertError) {
       console.error("Insert error:", insertError);
       return new Response(JSON.stringify({ error: "Failed to save recipe" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -192,8 +219,7 @@ serve(async (req) => {
   } catch (e) {
     console.error("parse-recipe error:", e);
     return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

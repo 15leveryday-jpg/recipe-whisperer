@@ -17,6 +17,31 @@ const ImportModal = ({ onClose, onImported }: ImportModalProps) => {
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [scanFile, setScanFile] = useState<File | null>(null);
+  const [scanPreview, setScanPreview] = useState<string | null>(null);
+
+  const handleFileChange = (file: File | null) => {
+    setScanFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setScanPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setScanPreview(null);
+    }
+  };
+
+  const uploadReferenceImage = async (file: File): Promise<string | null> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("recipe-images").upload(path, file);
+      if (error) { console.error("Upload error:", error); return null; }
+      const { data: urlData } = supabase.storage.from("recipe-images").getPublicUrl(path);
+      return urlData.publicUrl;
+    } catch { return null; }
+  };
 
   const handleParse = async () => {
     if (mode === "text" && !rawText.trim()) return;
@@ -26,18 +51,22 @@ const ImportModal = ({ onClose, onImported }: ImportModalProps) => {
     setLoading(true);
     try {
       let body: any = {};
+      let referenceImageUrl: string | null = null;
 
       if (mode === "text") {
         body = { type: "parse_text", text: rawText };
       } else if (mode === "url") {
-        body = { type: "parse_url", url };
+        body = { type: "parse_url", url, text: rawText || undefined };
       } else if (mode === "scan" && scanFile) {
+        // Upload original image to storage as reference
+        referenceImageUrl = await uploadReferenceImage(scanFile);
+
         const reader = new FileReader();
         const base64 = await new Promise<string>((resolve) => {
           reader.onload = () => resolve(reader.result as string);
           reader.readAsDataURL(scanFile);
         });
-        body = { type: "scan_image", image: base64 };
+        body = { type: "scan_image", image: base64, reference_image_url: referenceImageUrl };
       }
 
       const { data, error } = await supabase.functions.invoke("parse-recipe", { body });
@@ -72,7 +101,6 @@ const ImportModal = ({ onClose, onImported }: ImportModalProps) => {
         </div>
 
         <div className="p-5 space-y-4">
-          {/* Mode selector */}
           <div className="flex gap-2">
             {modes.map(({ key, label, icon: Icon }) => (
               <button
@@ -107,7 +135,7 @@ const ImportModal = ({ onClose, onImported }: ImportModalProps) => {
           {mode === "url" && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Provide a URL. You'll be asked to paste the transcript or content for AI processing.
+                Provide a URL. We'll try to extract the OG image. Paste content below for AI processing.
               </p>
               <Input
                 value={url}
@@ -129,11 +157,11 @@ const ImportModal = ({ onClose, onImported }: ImportModalProps) => {
           {mode === "scan" && (
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">
-                Upload a screenshot of a recipe (e.g., from Instagram) and Vision AI will extract it.
+                Upload a photo of a recipe (cookbook, Instagram screenshot, etc.). Vision AI will extract it. The original image is saved as a reference.
               </p>
-              <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors bg-background">
-                {scanFile ? (
-                  <span className="text-sm text-foreground font-medium">{scanFile.name}</span>
+              <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors bg-background overflow-hidden">
+                {scanPreview ? (
+                  <img src={scanPreview} alt="Preview" className="w-full h-full object-contain" />
                 ) : (
                   <>
                     <Camera className="w-8 h-8 text-muted-foreground mb-2" />
@@ -144,7 +172,7 @@ const ImportModal = ({ onClose, onImported }: ImportModalProps) => {
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={(e) => setScanFile(e.target.files?.[0] || null)}
+                  onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
                 />
               </label>
             </div>

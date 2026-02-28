@@ -18,6 +18,7 @@ export interface Recipe {
   servings: number | null;
   nutritional_tags: string[];
   image_url: string | null;
+  reference_image_url: string | null;
   created_at: string;
   updated_at: string;
 }

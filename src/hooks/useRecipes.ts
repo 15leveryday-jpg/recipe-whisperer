@@ -27,6 +27,7 @@ export function useRecipes(userId: string | undefined) {
         (data || []).map((r) => ({
           ...r,
           ingredients: (Array.isArray(r.ingredients) ? r.ingredients : []) as unknown as Ingredient[],
+          reference_image_url: (r as any).reference_image_url ?? null,
         }))
       );
     }
@@ -37,41 +38,26 @@ export function useRecipes(userId: string | undefined) {
     fetchRecipes();
   }, [fetchRecipes]);
 
-  const semanticSearch = async (query: string) => {
+  // Hybrid search: commas → pantry, sentence → semantic
+  const hybridSearch = async (query: string) => {
     setSearchLoading(true);
     try {
+      const isPantry = query.includes(",");
       const { data, error } = await supabase.functions.invoke("search-recipes", {
-        body: { type: "semantic", query },
+        body: isPantry
+          ? { type: "pantry", ingredients: query }
+          : { type: "semantic", query },
       });
       if (error) throw error;
       setSearchResults(
         (data?.results || []).map((r: any) => ({
           ...r,
           ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
+          reference_image_url: r.reference_image_url ?? null,
         }))
       );
     } catch {
       toast.error("Search failed");
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  const pantrySearch = async (ingredientList: string) => {
-    setSearchLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("search-recipes", {
-        body: { type: "pantry", ingredients: ingredientList },
-      });
-      if (error) throw error;
-      setSearchResults(
-        (data?.results || []).map((r: any) => ({
-          ...r,
-          ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
-        }))
-      );
-    } catch {
-      toast.error("Pantry search failed");
     } finally {
       setSearchLoading(false);
     }
@@ -89,18 +75,44 @@ export function useRecipes(userId: string | undefined) {
     return true;
   });
 
+  const updateRecipe = async (id: string, updates: Partial<Recipe>) => {
+    const { error } = await supabase
+      .from("recipes")
+      .update(updates as any)
+      .eq("id", id);
+    if (error) {
+      toast.error("Failed to update recipe");
+      return false;
+    }
+    toast.success("Recipe updated");
+    await fetchRecipes();
+    return true;
+  };
+
+  const deleteRecipe = async (id: string) => {
+    const { error } = await supabase.from("recipes").delete().eq("id", id);
+    if (error) {
+      toast.error("Failed to delete recipe");
+      return false;
+    }
+    toast.success("Recipe deleted");
+    await fetchRecipes();
+    return true;
+  };
+
   return {
     recipes: filteredRecipes,
     loading,
     searchLoading,
     searchResults,
-    semanticSearch,
-    pantrySearch,
+    hybridSearch,
     clearSearch,
     fetchRecipes,
     highProtein,
     setHighProtein,
     quickMeal,
     setQuickMeal,
+    updateRecipe,
+    deleteRecipe,
   };
 }
