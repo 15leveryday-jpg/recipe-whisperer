@@ -3,24 +3,21 @@ import { Search, Sparkles, ShoppingBasket } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface SearchBarProps {
-  onSemanticSearch: (query: string) => void;
-  onPantrySearch: (ingredients: string) => void;
+  onSearch: (query: string) => void;
   loading?: boolean;
 }
 
-const SearchBar = ({ onSemanticSearch, onPantrySearch, loading }: SearchBarProps) => {
-  const [mode, setMode] = useState<"semantic" | "pantry">("semantic");
+const SearchBar = ({ onSearch, loading }: SearchBarProps) => {
   const [query, setQuery] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    if (mode === "semantic") {
-      onSemanticSearch(query.trim());
-    } else {
-      onPantrySearch(query.trim());
-    }
+    onSearch(query.trim());
   };
+
+  // Auto-detect mode for display hint
+  const isPantry = query.includes(",");
 
   return (
     <form onSubmit={handleSubmit} className="w-full space-y-2">
@@ -29,38 +26,33 @@ const SearchBar = ({ onSemanticSearch, onPantrySearch, loading }: SearchBarProps
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={
-            mode === "semantic"
-              ? "Search by vibe... 'cozy winter soup' or 'post-workout meal'"
-              : "Type ingredients... 'broccoli, garlic, chili'"
-          }
+          placeholder="Search by vibe... or type ingredients separated by commas"
           className="pl-10 h-12 bg-card text-base shadow-card border-border/60"
           disabled={loading}
         />
       </div>
       <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setMode("semantic")}
+        <span
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-            mode === "semantic"
+            !isPantry
               ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:bg-accent"
+              : "bg-muted text-muted-foreground"
           }`}
         >
           <Sparkles className="w-3 h-3" /> Vibe Search
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode("pantry")}
+        </span>
+        <span
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-            mode === "pantry"
+            isPantry
               ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:bg-accent"
+              : "bg-muted text-muted-foreground"
           }`}
         >
           <ShoppingBasket className="w-3 h-3" /> Pantry Match
-        </button>
+        </span>
+        <span className="text-xs text-muted-foreground self-center ml-1">
+          {isPantry ? "Comma-separated → ingredient match" : "Natural language → semantic search"}
+        </span>
       </div>
     </form>
   );

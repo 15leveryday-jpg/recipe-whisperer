@@ -18,14 +18,15 @@ const Index = () => {
     loading,
     searchLoading,
     searchResults,
-    semanticSearch,
-    pantrySearch,
+    hybridSearch,
     clearSearch,
     fetchRecipes,
     highProtein,
     setHighProtein,
     quickMeal,
     setQuickMeal,
+    updateRecipe,
+    deleteRecipe,
   } = useRecipes(user?.id);
 
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
@@ -43,7 +44,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="font-display text-2xl text-foreground">Recipe Vault</h1>
@@ -59,14 +59,8 @@ const Index = () => {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* Search */}
-        <SearchBar
-          onSemanticSearch={semanticSearch}
-          onPantrySearch={pantrySearch}
-          loading={searchLoading}
-        />
+        <SearchBar onSearch={hybridSearch} loading={searchLoading} />
 
-        {/* Filters */}
         <div className="flex items-center gap-6">
           <label className="flex items-center gap-2 text-sm">
             <Switch checked={highProtein} onCheckedChange={setHighProtein} />
@@ -89,7 +83,6 @@ const Index = () => {
           )}
         </div>
 
-        {/* Recipe Grid */}
         {loading || searchLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -124,9 +117,13 @@ const Index = () => {
         )}
       </main>
 
-      {/* Modals */}
       {selectedRecipe && (
-        <RecipeDetail recipe={selectedRecipe} onClose={() => setSelectedRecipe(null)} />
+        <RecipeDetail
+          recipe={selectedRecipe}
+          onClose={() => { setSelectedRecipe(null); fetchRecipes(); }}
+          onUpdate={updateRecipe}
+          onDelete={deleteRecipe}
+        />
       )}
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onImported={fetchRecipes} />

@@ -25,6 +25,7 @@ export type Database = {
           instructions: string
           nutritional_tags: string[]
           prep_time_minutes: number | null
+          reference_image_url: string | null
           servings: number | null
           source: string
           source_url: string | null
@@ -43,6 +44,7 @@ export type Database = {
           instructions?: string
           nutritional_tags?: string[]
           prep_time_minutes?: number | null
+          reference_image_url?: string | null
           servings?: number | null
           source?: string
           source_url?: string | null
@@ -61,6 +63,7 @@ export type Database = {
           instructions?: string
           nutritional_tags?: string[]
           prep_time_minutes?: number | null
+          reference_image_url?: string | null
           servings?: number | null
           source?: string
           source_url?: string | null
