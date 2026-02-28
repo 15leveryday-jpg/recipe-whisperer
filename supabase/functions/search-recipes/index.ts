@@ -30,6 +30,7 @@ serve(async (req) => {
 
     if (type === "semantic") {
       // Generate embedding for the query
+      console.log("Generating embedding for query:", query);
       const embResponse = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
         method: "POST",
         headers: {
@@ -44,8 +45,76 @@ serve(async (req) => {
       });
 
       if (!embResponse.ok) {
-        return new Response(JSON.stringify({ error: "Embedding generation failed" }), {
-          status: 500,
+        const errBody = await embResponse.text();
+        console.error("Embedding API error:", embResponse.status, errBody);
+        
+        // Fallback: do text-based search if embeddings fail
+        console.log("Falling back to text-based search");
+        const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const { data: recipes, error: fetchError } = await adminClient
+          .from("recipes")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (fetchError) {
+          return new Response(JSON.stringify({ error: "Failed to fetch recipes" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const queryLower = query.toLowerCase();
+        const queryWords = queryLower.split(/\s+/).filter(Boolean);
+        
+        // Negative keywords mapping for dietary searches
+        const dietaryExclusions: Record<string, string[]> = {
+          vegetarian: ["meat", "pork", "chicken", "beef", "lamb", "sausage", "bacon", "turkey", "duck", "ham", "veal", "salami", "prosciutto", "ground pork", "ground beef"],
+          vegan: ["meat", "pork", "chicken", "beef", "lamb", "egg", "dairy", "milk", "cheese", "butter", "cream", "honey", "sausage", "bacon", "yogurt", "whey"],
+          pescatarian: ["meat", "pork", "chicken", "beef", "lamb", "sausage", "bacon", "turkey", "duck"],
+        };
+
+        // Check if query matches a dietary term
+        let excludeIngredients: string[] = [];
+        for (const [diet, exclusions] of Object.entries(dietaryExclusions)) {
+          if (queryLower.includes(diet)) {
+            excludeIngredients = exclusions;
+            break;
+          }
+        }
+
+        const results = (recipes || [])
+          .map((r: any) => {
+            const title = (r.title || "").toLowerCase();
+            const tags = (r.nutritional_tags || []).map((t: string) => t.toLowerCase());
+            const ingredientNames = (r.ingredients || []).map((i: any) => (i.name || "").toLowerCase());
+            const instructions = (r.instructions || "").toLowerCase();
+            const allText = `${title} ${tags.join(" ")} ${ingredientNames.join(" ")} ${instructions}`;
+
+            // Exclude recipes with banned ingredients for dietary searches
+            if (excludeIngredients.length > 0) {
+              const hasExcluded = ingredientNames.some((name: string) =>
+                excludeIngredients.some((ex) => name.includes(ex))
+              );
+              if (hasExcluded) return null;
+            }
+
+            // Score based on how many query words match
+            let score = 0;
+            for (const word of queryWords) {
+              if (allText.includes(word)) score++;
+              // Bonus for tag match
+              if (tags.some((t: string) => t.includes(word))) score += 2;
+              // Bonus for title match
+              if (title.includes(word)) score += 2;
+            }
+
+            if (score === 0) return null;
+            return { ...r, similarity: score / (queryWords.length * 5) };
+          })
+          .filter(Boolean)
+          .sort((a: any, b: any) => b.similarity - a.similarity);
+
+        return new Response(JSON.stringify({ results }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -54,6 +123,7 @@ serve(async (req) => {
       const embedding = embData.data?.[0]?.embedding;
 
       if (!embedding) {
+        console.error("No embedding in response:", JSON.stringify(embData).slice(0, 200));
         return new Response(JSON.stringify({ error: "No embedding returned" }), {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -87,7 +157,6 @@ serve(async (req) => {
         .map((i: string) => i.trim().toLowerCase())
         .filter(Boolean);
 
-      // Get all user recipes
       const adminClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const { data: recipes, error } = await adminClient
         .from("recipes")
@@ -101,7 +170,6 @@ serve(async (req) => {
         });
       }
 
-      // Calculate match percentage
       const results = (recipes || [])
         .map((r: any) => {
           const recipeIngredients = (r.ingredients || []).map((i: any) =>
