@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Plus, LogOut, X, Loader2, Zap, Flame } from "lucide-react";
+import { Plus, LogOut, X, Loader2, Zap, Flame, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecipes } from "@/hooks/useRecipes";
 import AuthForm from "@/components/AuthForm";
@@ -21,10 +22,11 @@ const Index = () => {
     hybridSearch,
     clearSearch,
     fetchRecipes,
-    highProtein,
-    setHighProtein,
-    quickMeal,
-    setQuickMeal,
+    highProtein, setHighProtein,
+    quickMeal, setQuickMeal,
+    toTryOnly, setToTryOnly,
+    activeTag, setActiveTag,
+    allTags,
     updateRecipe,
     deleteRecipe,
   } = useRecipes(user?.id);
@@ -58,10 +60,26 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-4">
         <SearchBar onSearch={hybridSearch} loading={searchLoading} />
 
-        <div className="flex items-center gap-6">
+        {/* Tag Cloud */}
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {allTags.map((tag) => (
+              <Badge
+                key={tag}
+                variant={activeTag === tag ? "default" : "outline"}
+                className="cursor-pointer text-xs"
+                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center gap-6 flex-wrap">
           <label className="flex items-center gap-2 text-sm">
             <Switch checked={highProtein} onCheckedChange={setHighProtein} />
             <Flame className="w-4 h-4 text-primary" />
@@ -71,6 +89,11 @@ const Index = () => {
             <Switch checked={quickMeal} onCheckedChange={setQuickMeal} />
             <Zap className="w-4 h-4 text-primary" />
             <span className="font-medium text-foreground">Quick Meal</span>
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <Switch checked={toTryOnly} onCheckedChange={setToTryOnly} />
+            <Bookmark className="w-4 h-4 text-primary" />
+            <span className="font-medium text-foreground">To Try</span>
           </label>
 
           {searchResults && (
@@ -93,9 +116,7 @@ const Index = () => {
               {searchResults ? "No recipes match" : "Your vault is empty"}
             </p>
             <p className="text-muted-foreground">
-              {searchResults
-                ? "Try a different search or adjust filters."
-                : "Import your first recipe to get started."}
+              {searchResults ? "Try a different search or adjust filters." : "Import your first recipe to get started."}
             </p>
             {!searchResults && (
               <Button onClick={() => setShowImport(true)} variant="outline" className="mt-4 gap-2">
@@ -120,9 +141,14 @@ const Index = () => {
       {selectedRecipe && (
         <RecipeDetail
           recipe={selectedRecipe}
-          onClose={() => { setSelectedRecipe(null); fetchRecipes(); }}
-          onUpdate={updateRecipe}
+          onClose={() => setSelectedRecipe(null)}
+          onUpdate={async (id, updates) => {
+            const ok = await updateRecipe(id, updates);
+            if (ok) setSelectedRecipe((prev) => prev ? { ...prev, ...updates } : null);
+            return ok;
+          }}
           onDelete={deleteRecipe}
+          allTags={allTags}
         />
       )}
       {showImport && (

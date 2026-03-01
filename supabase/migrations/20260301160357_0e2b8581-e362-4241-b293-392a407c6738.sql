@@ -1,0 +1,1 @@
+ALTER TABLE public.recipes ADD COLUMN IF NOT EXISTS is_to_try boolean NOT NULL DEFAULT false;

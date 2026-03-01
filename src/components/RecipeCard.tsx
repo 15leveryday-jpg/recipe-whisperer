@@ -1,5 +1,6 @@
-import { Clock, Users, ChefHat } from "lucide-react";
+import { Clock, Users, ChefHat, Bookmark } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { format } from "date-fns";
 import type { Recipe } from "@/types/recipe";
 
 interface RecipeCardProps {
@@ -9,7 +10,7 @@ interface RecipeCardProps {
 }
 
 const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
-  const totalTime = recipe.total_time_minutes || 
+  const totalTime = recipe.total_time_minutes ||
     ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
 
   return (
@@ -17,19 +18,22 @@ const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
       onClick={onClick}
       className="group w-full text-left bg-card rounded-lg shadow-card hover:shadow-elevated transition-all duration-300 overflow-hidden border border-border/50 animate-fade-in"
     >
-      {recipe.image_url ? (
-        <div className="h-44 overflow-hidden">
-          <img
-            src={recipe.image_url}
-            alt={recipe.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        </div>
-      ) : (
-        <div className="h-44 bg-accent flex items-center justify-center">
-          <ChefHat className="w-12 h-12 text-muted-foreground/40" />
-        </div>
-      )}
+      <div className="relative">
+        {recipe.image_url ? (
+          <div className="h-44 overflow-hidden">
+            <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          </div>
+        ) : (
+          <div className="h-44 bg-accent flex items-center justify-center">
+            <ChefHat className="w-12 h-12 text-muted-foreground/40" />
+          </div>
+        )}
+        {recipe.is_to_try && (
+          <span className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+            <Bookmark className="w-3 h-3" /> To Try
+          </span>
+        )}
+      </div>
 
       <div className="p-4 space-y-3">
         <h3 className="font-display text-lg text-foreground leading-tight group-hover:text-primary transition-colors">
@@ -39,14 +43,12 @@ const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
           {totalTime && (
             <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
-              {totalTime}m
+              <Clock className="w-3.5 h-3.5" /> {totalTime}m
             </span>
           )}
           {recipe.servings && (
             <span className="flex items-center gap-1">
-              <Users className="w-3.5 h-3.5" />
-              {recipe.servings}
+              <Users className="w-3.5 h-3.5" /> {recipe.servings}
             </span>
           )}
         </div>
@@ -54,10 +56,7 @@ const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
         {matchPercentage !== undefined && (
           <div className="flex items-center gap-2">
             <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full rounded-full bg-kitchen-herb transition-all"
-                style={{ width: `${matchPercentage}%` }}
-              />
+              <div className="h-full rounded-full bg-kitchen-herb transition-all" style={{ width: `${matchPercentage}%` }} />
             </div>
             <span className="text-xs font-medium text-kitchen-herb">{matchPercentage}%</span>
           </div>
@@ -66,12 +65,14 @@ const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
         {recipe.nutritional_tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {recipe.nutritional_tags.slice(0, 3).map((tag) => (
-              <Badge key={tag} variant="secondary" className="text-xs font-medium">
-                {tag}
-              </Badge>
+              <Badge key={tag} variant="secondary" className="text-xs font-medium">{tag}</Badge>
             ))}
           </div>
         )}
+
+        <p className="text-xs text-muted-foreground">
+          Added {format(new Date(recipe.created_at), "MMM d, yyyy")}
+        </p>
       </div>
     </button>
   );

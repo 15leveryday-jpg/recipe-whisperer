@@ -23,6 +23,7 @@ export type Database = {
           image_url: string | null
           ingredients: Json
           instructions: string
+          is_to_try: boolean
           nutritional_tags: string[]
           prep_time_minutes: number | null
           reference_image_url: string | null
@@ -42,6 +43,7 @@ export type Database = {
           image_url?: string | null
           ingredients?: Json
           instructions?: string
+          is_to_try?: boolean
           nutritional_tags?: string[]
           prep_time_minutes?: number | null
           reference_image_url?: string | null
@@ -61,6 +63,7 @@ export type Database = {
           image_url?: string | null
           ingredients?: Json
           instructions?: string
+          is_to_try?: boolean
           nutritional_tags?: string[]
           prep_time_minutes?: number | null
           reference_image_url?: string | null
