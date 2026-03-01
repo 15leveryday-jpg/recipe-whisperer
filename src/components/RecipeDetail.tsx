@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,28 +16,21 @@ interface RecipeDetailProps {
   onClose: () => void;
   onUpdate?: (id: string, updates: Partial<Recipe>) => Promise<boolean>;
   onDelete?: (id: string) => Promise<boolean>;
+  allTags?: string[];
 }
 
 // Unit conversion tables
 const imperialToMetric: Record<string, { factor: number; to: string }> = {
-  lb: { factor: 453.592, to: "g" },
-  lbs: { factor: 453.592, to: "g" },
-  oz: { factor: 28.3495, to: "g" },
-  cup: { factor: 236.588, to: "ml" },
-  cups: { factor: 236.588, to: "ml" },
-  tbsp: { factor: 14.787, to: "ml" },
-  tsp: { factor: 4.929, to: "ml" },
-  "fl oz": { factor: 29.574, to: "ml" },
-  quart: { factor: 946.353, to: "ml" },
-  pint: { factor: 473.176, to: "ml" },
+  lb: { factor: 453.592, to: "g" }, lbs: { factor: 453.592, to: "g" },
+  oz: { factor: 28.3495, to: "g" }, cup: { factor: 236.588, to: "ml" },
+  cups: { factor: 236.588, to: "ml" }, tbsp: { factor: 14.787, to: "ml" },
+  tsp: { factor: 4.929, to: "ml" }, "fl oz": { factor: 29.574, to: "ml" },
+  quart: { factor: 946.353, to: "ml" }, pint: { factor: 473.176, to: "ml" },
   gallon: { factor: 3785.41, to: "ml" },
 };
-
 const metricToImperial: Record<string, { factor: number; to: string }> = {
-  g: { factor: 0.035274, to: "oz" },
-  kg: { factor: 2.20462, to: "lb" },
-  ml: { factor: 0.033814, to: "fl oz" },
-  l: { factor: 0.264172, to: "gallon" },
+  g: { factor: 0.035274, to: "oz" }, kg: { factor: 2.20462, to: "lb" },
+  ml: { factor: 0.033814, to: "fl oz" }, l: { factor: 0.264172, to: "gallon" },
 };
 
 function scaleAmount(amount: string | undefined, multiplier: number): string {
@@ -48,7 +41,7 @@ function scaleAmount(amount: string | undefined, multiplier: number): string {
   return scaled % 1 === 0 ? String(scaled) : scaled.toFixed(2).replace(/\.?0+$/, "");
 }
 
-function convertUnit(amount: string | undefined, unit: string | undefined, toMetric: boolean): { amount: string; unit: string } {
+function convertUnit(amount: string | undefined, unit: string | undefined, toMetric: boolean) {
   if (!amount || !unit) return { amount: amount || "", unit: unit || "" };
   const num = parseFloat(amount);
   if (isNaN(num)) return { amount, unit };
@@ -62,7 +55,7 @@ function convertUnit(amount: string | undefined, unit: string | undefined, toMet
   };
 }
 
-const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps) => {
+const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: RecipeDetailProps) => {
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
   const [useMetric, setUseMetric] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -74,19 +67,47 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
   const [uploading, setUploading] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
 
-  const totalTime = recipe.total_time_minutes ||
-    ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
+  // Tag suggestion dropdown
+  const [tagInputFocused, setTagInputFocused] = useState(false);
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
+  // Current partial tag being typed (last segment after comma)
+  const currentPartial = editTags.split(",").pop()?.trim().toLowerCase() || "";
+  const existingInEdit = editTags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+  const tagSuggestions = allTags.filter(
+    (t) => t.toLowerCase().includes(currentPartial) && !existingInEdit.includes(t.toLowerCase())
+  );
+
+  const selectTagSuggestion = (tag: string) => {
+    const parts = editTags.split(",").map((t) => t.trim()).filter(Boolean);
+    parts.pop(); // remove partial
+    parts.push(tag);
+    setEditTags(parts.join(", ") + ", ");
+    tagInputRef.current?.focus();
+  };
+
+  // Esc to close
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  // Sync recipe prop changes
+  useEffect(() => {
+    setEditTitle(recipe.title);
+    setEditInstructions(recipe.instructions);
+    setEditIngredients(recipe.ingredients);
+    setEditTags(recipe.nutritional_tags.join(", "));
+  }, [recipe]);
+
+  const totalTime = recipe.total_time_minutes || ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
   const currentServings = recipe.servings ? Math.round(recipe.servings * servingsMultiplier) : null;
 
   const scaledIngredients = useMemo(() => {
     return recipe.ingredients.map((ing) => {
       let { amount, unit } = { amount: scaleAmount(ing.amount, servingsMultiplier), unit: ing.unit || "" };
-      if (useMetric) {
-        const conv = convertUnit(amount, unit, true);
-        amount = conv.amount;
-        unit = conv.unit;
-      }
+      if (useMetric) { const conv = convertUnit(amount, unit, true); amount = conv.amount; unit = conv.unit; }
       return { ...ing, amount, unit };
     });
   }, [recipe.ingredients, servingsMultiplier, useMetric]);
@@ -94,12 +115,13 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
   const handleSave = async () => {
     if (!onUpdate) return;
     setSaving(true);
-    const success = await onUpdate(recipe.id, {
+    const updates: Partial<Recipe> = {
       title: editTitle,
       instructions: editInstructions,
       ingredients: editIngredients as any,
       nutritional_tags: editTags.split(",").map((t) => t.trim()).filter(Boolean),
-    });
+    };
+    const success = await onUpdate(recipe.id, updates);
     setSaving(false);
     if (success) setEditing(false);
   };
@@ -123,11 +145,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
       if (error) throw error;
       const { data: urlData } = supabase.storage.from("recipe-images").getPublicUrl(path);
       await onUpdate(recipe.id, { image_url: urlData.publicUrl });
-    } catch {
-      toast.error("Failed to upload image");
-    } finally {
-      setUploading(false);
-    }
+    } catch { toast.error("Failed to upload image"); } finally { setUploading(false); }
   };
 
   return (
@@ -199,17 +217,10 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
         {/* Meta bar */}
         <div className="px-6 pt-4 pb-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
           {totalTime && (
-            <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4" /> {totalTime} min
-            </span>
+            <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {totalTime} min</span>
           )}
           {recipe.source_url && (
-            <a
-              href={recipe.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-primary hover:underline"
-            >
+            <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary hover:underline">
               <ExternalLink className="w-4 h-4" /> Source
             </a>
           )}
@@ -237,8 +248,29 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
 
         {/* Tags */}
         {editing ? (
-          <div className="px-6 pt-4">
-            <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="Tags (comma separated)" className="bg-background text-sm" />
+          <div className="px-6 pt-4 relative">
+            <Input
+              ref={tagInputRef}
+              value={editTags}
+              onChange={(e) => setEditTags(e.target.value)}
+              onFocus={() => setTagInputFocused(true)}
+              onBlur={() => setTimeout(() => setTagInputFocused(false), 200)}
+              placeholder="Tags (comma separated)"
+              className="bg-background text-sm"
+            />
+            {tagInputFocused && currentPartial && tagSuggestions.length > 0 && (
+              <div className="absolute left-6 right-6 top-full mt-1 bg-card border border-border rounded-lg shadow-elevated z-20 max-h-32 overflow-y-auto">
+                {tagSuggestions.slice(0, 6).map((tag) => (
+                  <button
+                    key={tag}
+                    onMouseDown={() => selectTagSuggestion(tag)}
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : recipe.nutritional_tags.length > 0 ? (
           <div className="px-6 pt-4 flex flex-wrap gap-2">

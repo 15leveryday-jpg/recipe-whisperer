@@ -19,6 +19,7 @@ export interface Recipe {
   nutritional_tags: string[];
   image_url: string | null;
   reference_image_url: string | null;
+  is_to_try: boolean;
   created_at: string;
   updated_at: string;
 }
