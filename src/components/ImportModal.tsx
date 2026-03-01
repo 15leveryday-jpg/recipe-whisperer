@@ -18,6 +18,7 @@ const ImportModal = ({ onClose, onImported }: ImportModalProps) => {
   const [loading, setLoading] = useState(false);
   const [scanFile, setScanFile] = useState<File | null>(null);
   const [scanPreview, setScanPreview] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   const handleFileChange = (file: File | null) => {
     setScanFile(file);
@@ -159,13 +160,27 @@ const ImportModal = ({ onClose, onImported }: ImportModalProps) => {
               <p className="text-sm text-muted-foreground">
                 Upload a photo of a recipe (cookbook, Instagram screenshot, etc.). Vision AI will extract it. The original image is saved as a reference.
               </p>
-              <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 transition-colors bg-background overflow-hidden">
+              <label
+                className={`flex flex-col items-center justify-center h-40 border-2 border-dashed rounded-lg cursor-pointer transition-colors bg-background overflow-hidden ${
+                  dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file && file.type.startsWith("image/")) handleFileChange(file);
+                }}
+              >
                 {scanPreview ? (
                   <img src={scanPreview} alt="Preview" className="w-full h-full object-contain" />
                 ) : (
                   <>
                     <Camera className="w-8 h-8 text-muted-foreground mb-2" />
-                    <span className="text-sm text-muted-foreground">Click to upload image</span>
+                    <span className="text-sm text-muted-foreground">
+                      {dragOver ? "Drop image here" : "Drag & drop or click to upload"}
+                    </span>
                   </>
                 )}
                 <input

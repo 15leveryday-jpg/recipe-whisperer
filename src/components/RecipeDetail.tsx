@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -71,6 +72,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
   const [editTags, setEditTags] = useState(recipe.nutritional_tags.join(", "));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
 
   const totalTime = recipe.total_time_minutes ||
     ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
@@ -154,11 +156,6 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
                 </Button>
               </>
             )}
-            {onDelete && (
-              <Button variant="ghost" size="icon" onClick={handleDelete} className="text-destructive">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            )}
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="w-5 h-5" />
             </Button>
@@ -175,11 +172,18 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
             </div>
           )}
           {editing && (
-            <label className="absolute bottom-3 right-3 bg-card/90 backdrop-blur-sm rounded-lg px-3 py-2 cursor-pointer text-sm font-medium flex items-center gap-2 border border-border hover:bg-accent transition-colors">
-              <ImageIcon className="w-4 h-4" />
-              {uploading ? "Uploading..." : "Replace Image"}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
-            </label>
+            <div className="absolute bottom-3 right-3 flex gap-2">
+              {recipe.image_url && (
+                <Button variant="destructive" size="sm" className="text-xs" onClick={() => onUpdate?.(recipe.id, { image_url: null })}>
+                  <Trash2 className="w-3 h-3 mr-1" /> Remove
+                </Button>
+              )}
+              <label className="bg-card/90 backdrop-blur-sm rounded-lg px-3 py-2 cursor-pointer text-sm font-medium flex items-center gap-2 border border-border hover:bg-accent transition-colors">
+                <ImageIcon className="w-4 h-4" />
+                {uploading ? "Uploading..." : "Replace Image"}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+              </label>
+            </div>
           )}
         </div>
 
@@ -268,9 +272,16 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
             ) : (
               <ul className="space-y-2">
                 {scaledIngredients.map((ing, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" />
-                    <span>
+                  <li key={i} className="flex items-center gap-2.5 text-sm">
+                    <Checkbox
+                      checked={checkedIngredients.has(i)}
+                      onCheckedChange={(checked) => {
+                        const next = new Set(checkedIngredients);
+                        checked ? next.add(i) : next.delete(i);
+                        setCheckedIngredients(next);
+                      }}
+                    />
+                    <span className={checkedIngredients.has(i) ? "line-through text-muted-foreground" : ""}>
                       {ing.amount && <span className="font-medium">{ing.amount} </span>}
                       {ing.unit && <span className="text-muted-foreground">{ing.unit} </span>}
                       {ing.name}
@@ -293,6 +304,15 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete }: RecipeDetailProps
             )}
           </div>
         </div>
+
+        {/* Delete button pinned to bottom-left */}
+        {onDelete && (
+          <div className="px-6 pb-6 pt-2">
+            <Button variant="ghost" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs">
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Delete Recipe
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
