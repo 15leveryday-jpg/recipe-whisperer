@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Plus, LogOut, X, Loader2, Zap, Flame, Bookmark } from "lucide-react";
+import { Plus, LogOut, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecipes } from "@/hooks/useRecipes";
 import AuthForm from "@/components/AuthForm";
@@ -10,22 +8,25 @@ import RecipeCard from "@/components/RecipeCard";
 import RecipeDetail from "@/components/RecipeDetail";
 import ImportModal from "@/components/ImportModal";
 import SearchBar from "@/components/SearchBar";
+import FacetedFilters from "@/components/FacetedFilters";
 import type { Recipe } from "@/types/recipe";
 
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const {
     recipes,
+    allRecipes,
     loading,
     searchLoading,
     searchResults,
     hybridSearch,
     clearSearch,
     fetchRecipes,
-    highProtein, setHighProtein,
-    quickMeal, setQuickMeal,
-    toTryOnly, setToTryOnly,
-    activeTag, setActiveTag,
+    selectedFacets,
+    toggleFacet,
+    toTryActive,
+    setToTryActive,
+    clearAllFacets,
     allTags,
     updateRecipe,
     deleteRecipe,
@@ -63,48 +64,24 @@ const Index = () => {
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-4">
         <SearchBar onSearch={hybridSearch} loading={searchLoading} />
 
-        {/* Tag Cloud */}
-        {allTags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {allTags.map((tag) => (
-              <Badge
-                key={tag}
-                variant={activeTag === tag ? "default" : "outline"}
-                className="cursor-pointer text-xs"
-                onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
+        {/* Faceted Filters */}
+        <FacetedFilters
+          allRecipes={allRecipes}
+          selectedFacets={selectedFacets}
+          onToggleFacet={toggleFacet}
+          onClearAll={clearAllFacets}
+          toTryActive={toTryActive}
+          onToggleToTry={() => setToTryActive((v) => !v)}
+        />
+
+        {searchResults && (
+          <button
+            onClick={clearSearch}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-3.5 h-3.5" /> Clear search
+          </button>
         )}
-
-        <div className="flex items-center gap-6 flex-wrap">
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={highProtein} onCheckedChange={setHighProtein} />
-            <Flame className="w-4 h-4 text-primary" />
-            <span className="font-medium text-foreground">High Protein</span>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={quickMeal} onCheckedChange={setQuickMeal} />
-            <Zap className="w-4 h-4 text-primary" />
-            <span className="font-medium text-foreground">Quick Meal</span>
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={toTryOnly} onCheckedChange={setToTryOnly} />
-            <Bookmark className="w-4 h-4 text-primary" />
-            <span className="font-medium text-foreground">To Try</span>
-          </label>
-
-          {searchResults && (
-            <button
-              onClick={clearSearch}
-              className="ml-auto flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-3.5 h-3.5" /> Clear search
-            </button>
-          )}
-        </div>
 
         {loading || searchLoading ? (
           <div className="flex items-center justify-center py-20">

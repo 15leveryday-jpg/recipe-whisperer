@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
-import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon } from "lucide-react";
+import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -63,6 +63,8 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
   const [editInstructions, setEditInstructions] = useState(recipe.instructions);
   const [editIngredients, setEditIngredients] = useState<Ingredient[]>(recipe.ingredients);
   const [editTags, setEditTags] = useState(recipe.nutritional_tags.join(", "));
+  const [editNotes, setEditNotes] = useState(recipe.notes || "");
+  const [editImageUrl, setEditImageUrl] = useState(recipe.image_url || "");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
@@ -71,7 +73,6 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
   const [tagInputFocused, setTagInputFocused] = useState(false);
   const tagInputRef = useRef<HTMLInputElement>(null);
 
-  // Current partial tag being typed (last segment after comma)
   const currentPartial = editTags.split(",").pop()?.trim().toLowerCase() || "";
   const existingInEdit = editTags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
   const tagSuggestions = allTags.filter(
@@ -80,7 +81,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
 
   const selectTagSuggestion = (tag: string) => {
     const parts = editTags.split(",").map((t) => t.trim()).filter(Boolean);
-    parts.pop(); // remove partial
+    parts.pop();
     parts.push(tag);
     setEditTags(parts.join(", ") + ", ");
     tagInputRef.current?.focus();
@@ -99,6 +100,8 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
     setEditInstructions(recipe.instructions);
     setEditIngredients(recipe.ingredients);
     setEditTags(recipe.nutritional_tags.join(", "));
+    setEditNotes(recipe.notes || "");
+    setEditImageUrl(recipe.image_url || "");
   }, [recipe]);
 
   const totalTime = recipe.total_time_minutes || ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
@@ -120,6 +123,8 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
       instructions: editInstructions,
       ingredients: editIngredients as any,
       nutritional_tags: editTags.split(",").map((t) => t.trim()).filter(Boolean),
+      notes: editNotes,
+      image_url: editImageUrl.trim() || null,
     };
     const success = await onUpdate(recipe.id, updates);
     setSaving(false);
@@ -133,19 +138,30 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
     onClose();
   };
 
-  const handleImageUpload = async (file: File) => {
-    if (!onUpdate) return;
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || !onUpdate) return;
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      const ext = file.name.split(".").pop();
-      const path = `${user.id}/${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from("recipe-images").upload(path, file);
-      if (error) throw error;
-      const { data: urlData } = supabase.storage.from("recipe-images").getPublicUrl(path);
-      await onUpdate(recipe.id, { image_url: urlData.publicUrl });
-    } catch { toast.error("Failed to upload image"); } finally { setUploading(false); }
+
+      let lastUrl = "";
+      for (const file of Array.from(files)) {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error } = await supabase.storage.from("recipe-images").upload(path, file);
+        if (error) throw error;
+        const { data: urlData } = supabase.storage.from("recipe-images").getPublicUrl(path);
+        lastUrl = urlData.publicUrl;
+      }
+      // Set the last uploaded as the primary image
+      await onUpdate(recipe.id, { image_url: lastUrl });
+      setEditImageUrl(lastUrl);
+    } catch {
+      toast.error("Failed to upload image");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -198,12 +214,27 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
               )}
               <label className="bg-card/90 backdrop-blur-sm rounded-lg px-3 py-2 cursor-pointer text-sm font-medium flex items-center gap-2 border border-border hover:bg-accent transition-colors">
                 <ImageIcon className="w-4 h-4" />
-                {uploading ? "Uploading..." : "Replace Image"}
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])} />
+                {uploading ? "Uploading..." : "Upload Image"}
+                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleImageUpload(e.target.files)} />
               </label>
             </div>
           )}
         </div>
+
+        {/* Image URL field in edit mode */}
+        {editing && (
+          <div className="px-6 pt-3">
+            <div className="flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+              <Input
+                value={editImageUrl}
+                onChange={(e) => setEditImageUrl(e.target.value)}
+                placeholder="Image URL (paste a link to an image)"
+                className="bg-background text-sm"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Reference image link */}
         {recipe.reference_image_url && (
@@ -336,6 +367,26 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
             )}
           </div>
         </div>
+
+        {/* Notes Section */}
+        {editing ? (
+          <div className="px-6 pb-4">
+            <h3 className="font-display text-lg mb-2 text-foreground">Notes</h3>
+            <Textarea
+              value={editNotes}
+              onChange={(e) => setEditNotes(e.target.value)}
+              placeholder="Add personal notes, tips, or modifications..."
+              className="min-h-[100px] bg-background text-sm"
+            />
+          </div>
+        ) : recipe.notes ? (
+          <div className="px-6 pb-4">
+            <h3 className="font-display text-lg mb-2 text-foreground">Notes</h3>
+            <div className="prose prose-sm max-w-none text-foreground/90 bg-muted/50 rounded-lg p-4">
+              <ReactMarkdown>{recipe.notes}</ReactMarkdown>
+            </div>
+          </div>
+        ) : null}
 
         {/* Delete button pinned to bottom-left */}
         {onDelete && (

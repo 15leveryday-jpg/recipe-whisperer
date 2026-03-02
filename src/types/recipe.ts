@@ -20,6 +20,7 @@ export interface Recipe {
   image_url: string | null;
   reference_image_url: string | null;
   is_to_try: boolean;
+  notes: string;
   created_at: string;
   updated_at: string;
 }
