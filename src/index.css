@@ -53,6 +53,8 @@
     --kitchen-cream: 40 33% 97%;
     --kitchen-clay: 20 30% 72%;
     --kitchen-charcoal: 20 10% 15%;
+    --to-try: 38 92% 50%;
+    --to-try-foreground: 38 92% 15%;
 
     --font-display: 'DM Serif Display', serif;
     --font-body: 'Inter', sans-serif;
@@ -84,6 +86,13 @@
   }
   .font-body {
     font-family: var(--font-body);
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 

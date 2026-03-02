@@ -60,6 +60,10 @@ export default {
           clay: "hsl(var(--kitchen-clay))",
           charcoal: "hsl(var(--kitchen-charcoal))",
         },
+        "to-try": {
+          DEFAULT: "hsl(var(--to-try))",
+          foreground: "hsl(var(--to-try-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

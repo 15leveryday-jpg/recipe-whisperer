@@ -1,6 +1,7 @@
 import { Clock, Users, ChefHat, Bookmark } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { isRecipeToTry } from "@/components/FacetedFilters";
 import type { Recipe } from "@/types/recipe";
 
 interface RecipeCardProps {
@@ -12,6 +13,8 @@ interface RecipeCardProps {
 const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
   const totalTime = recipe.total_time_minutes ||
     ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
+
+  const toTry = isRecipeToTry(recipe);
 
   return (
     <button
@@ -28,8 +31,8 @@ const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
             <ChefHat className="w-12 h-12 text-muted-foreground/40" />
           </div>
         )}
-        {recipe.is_to_try && (
-          <span className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-medium px-2 py-0.5 rounded-full flex items-center gap-1">
+        {toTry && (
+          <span className="absolute top-2 left-2 bg-to-try text-to-try-foreground text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-elevated">
             <Bookmark className="w-3 h-3" /> To Try
           </span>
         )}
@@ -64,7 +67,7 @@ const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
 
         {recipe.nutritional_tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {recipe.nutritional_tags.slice(0, 3).map((tag) => (
+            {recipe.nutritional_tags.filter(t => t.toLowerCase() !== "to-try").slice(0, 3).map((tag) => (
               <Badge key={tag} variant="secondary" className="text-xs font-medium">{tag}</Badge>
             ))}
           </div>
