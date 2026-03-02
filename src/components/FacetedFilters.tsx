@@ -37,6 +37,11 @@ const FACET_CATEGORIES: { key: string; label: string; match: (tag: string) => bo
   },
 ];
 
+/** Normalize a tag for display in filters: strip parenthetical suffixes */
+export function normalizeTagLabel(tag: string): string {
+  return tag.replace(/\s*\(.*\)\s*$/, "").trim();
+}
+
 function categorizeTag(tag: string): string {
   for (const cat of FACET_CATEGORIES) {
     if (cat.match(tag)) return cat.key;
@@ -59,8 +64,8 @@ export function applyFacetedFilters(
     if (toTryActive && !isRecipeToTry(r)) return false;
     for (const [, values] of Object.entries(selectedFacets)) {
       if (values.size === 0) continue;
-      // Recipe must match at least one selected value in this category
-      const hasMatch = r.nutritional_tags.some((t) => values.has(t));
+      // Match if any recipe tag's normalized label is in the selected set
+      const hasMatch = r.nutritional_tags.some((t) => values.has(normalizeTagLabel(t)));
       if (!hasMatch) return false;
     }
     return true;
@@ -81,15 +86,21 @@ const FacetedFilters = ({
     const tagSet = new Set<string>();
     allRecipes.forEach((r) => r.nutritional_tags.forEach((t) => tagSet.add(t)));
 
-    // Group by category
+    // Group by category, deduplicating by normalized label
     const groups: Record<string, string[]> = {};
     for (const cat of FACET_CATEGORIES) groups[cat.key] = [];
     groups["other"] = [];
 
+    const seen: Record<string, Set<string>> = {};
     tagSet.forEach((tag) => {
-      if (tag.toLowerCase() === "to-try") return; // handled by status toggle
+      if (tag.toLowerCase() === "to-try") return;
       const cat = categorizeTag(tag);
-      groups[cat].push(tag);
+      const normalized = normalizeTagLabel(tag);
+      if (!seen[cat]) seen[cat] = new Set();
+      if (!seen[cat].has(normalized)) {
+        seen[cat].add(normalized);
+        groups[cat].push(normalized);
+      }
     });
 
     // Sort each group
@@ -173,7 +184,7 @@ const FacetedFilters = ({
               const isSelected = selectedFacets[catKey]?.has(tag);
               const available = isSelected ? 1 : getAvailableCount(catKey, tag);
               return (
-                <Badge
+              <Badge
                   key={tag}
                   variant={isSelected ? "default" : "outline"}
                   className={`cursor-pointer text-xs whitespace-nowrap transition-all ${
