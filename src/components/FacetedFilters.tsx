@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { X, Bookmark } from "lucide-react";
+import { useMemo, useState, useCallback } from "react";
+import { X, Bookmark, GripVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Recipe } from "@/types/recipe";
@@ -13,8 +13,13 @@ interface FacetedFiltersProps {
   onToggleToTry: () => void;
 }
 
-// Tag categorization rules
+// Tag categorization rules — Cuisine first per plan
 const FACET_CATEGORIES: { key: string; label: string; match: (tag: string) => boolean }[] = [
+  {
+    key: "cuisine",
+    label: "Cuisine",
+    match: (t) => /korean|japanese|chinese|thai|indian|mexican|italian|french|greek|mediterranean|american|pasta|middle.eastern|african|vietnamese|spanish|cambodian/i.test(t),
+  },
   {
     key: "dietary",
     label: "Dietary",
@@ -30,11 +35,6 @@ const FACET_CATEGORIES: { key: string; label: string; match: (tag: string) => bo
     label: "Health / Goals",
     match: (t) => /protein|low.cal|low.carb|fiber|iron|vitamin|omega|antioxidant|heart|energy|weight/i.test(t),
   },
-  {
-    key: "cuisine",
-    label: "Cuisine",
-    match: (t) => /korean|japanese|chinese|thai|indian|mexican|italian|french|greek|mediterranean|american|pasta|middle.eastern|african|vietnamese|spanish/i.test(t),
-  },
 ];
 
 /** Normalize a tag for display in filters: strip parenthetical suffixes */
@@ -42,7 +42,25 @@ export function normalizeTagLabel(tag: string): string {
   return tag.replace(/\s*\(.*\)\s*$/, "").trim();
 }
 
+/** localStorage key for user tag category overrides */
+const TAG_OVERRIDES_KEY = "tagCategoryOverrides";
+
+function loadTagOverrides(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(TAG_OVERRIDES_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveTagOverrides(overrides: Record<string, string>) {
+  localStorage.setItem(TAG_OVERRIDES_KEY, JSON.stringify(overrides));
+}
+
 function categorizeTag(tag: string): string {
+  const overrides = loadTagOverrides();
+  const normalized = normalizeTagLabel(tag);
+  if (overrides[normalized]) return overrides[normalized];
   for (const cat of FACET_CATEGORIES) {
     if (cat.match(tag)) return cat.key;
   }
@@ -64,7 +82,6 @@ export function applyFacetedFilters(
     if (toTryActive && !isRecipeToTry(r)) return false;
     for (const [, values] of Object.entries(selectedFacets)) {
       if (values.size === 0) continue;
-      // Match if any recipe tag's normalized label is in the selected set
       const hasMatch = r.nutritional_tags.some((t) => values.has(normalizeTagLabel(t)));
       if (!hasMatch) return false;
     }
@@ -80,13 +97,15 @@ const FacetedFilters = ({
   toTryActive,
   onToggleToTry,
 }: FacetedFiltersProps) => {
-  // Build categorized tag map with availability counts
+  const [dragState, setDragState] = useState<{ tag: string; sourceCategory: string } | null>(null);
+  const [overridesVersion, setOverridesVersion] = useState(0);
+
   const { facetGroups, hasAnyFilter } = useMemo(() => {
-    // Collect all tags
+    // Force recalc when overrides change
+    void overridesVersion;
     const tagSet = new Set<string>();
     allRecipes.forEach((r) => r.nutritional_tags.forEach((t) => tagSet.add(t)));
 
-    // Group by category, deduplicating by normalized label
     const groups: Record<string, string[]> = {};
     for (const cat of FACET_CATEGORIES) groups[cat.key] = [];
     groups["other"] = [];
@@ -103,33 +122,22 @@ const FacetedFilters = ({
       }
     });
 
-    // Sort each group
     for (const key of Object.keys(groups)) groups[key].sort();
-
-    // Remove empty groups
     for (const key of Object.keys(groups)) {
       if (groups[key].length === 0) delete groups[key];
     }
 
-    const hasAny =
-      toTryActive || Object.values(selectedFacets).some((s) => s.size > 0);
-
+    const hasAny = toTryActive || Object.values(selectedFacets).some((s) => s.size > 0);
     return { facetGroups: groups, hasAnyFilter: hasAny };
-  }, [allRecipes, selectedFacets, toTryActive]);
+  }, [allRecipes, selectedFacets, toTryActive, overridesVersion]);
 
-  // Calculate availability: would toggling this tag yield >0 results?
   const getAvailableCount = (category: string, tag: string): number => {
-    // Build a hypothetical filter set with this tag added/toggled
     const hypothetical: Record<string, Set<string>> = {};
     for (const [k, v] of Object.entries(selectedFacets)) {
       hypothetical[k] = new Set(v);
     }
     if (!hypothetical[category]) hypothetical[category] = new Set();
-
-    // If already selected, it's always "available"
     if (hypothetical[category].has(tag)) return 1;
-
-    // Add this tag
     hypothetical[category].add(tag);
     return applyFacetedFilters(allRecipes, hypothetical, toTryActive).length;
   };
@@ -140,11 +148,28 @@ const FacetedFilters = ({
 
   const toTryCount = allRecipes.filter(isRecipeToTry).length;
 
+  // Drag-and-drop handlers
+  const handleDragStart = useCallback((tag: string, sourceCategory: string) => {
+    setDragState({ tag, sourceCategory });
+  }, []);
+
+  const handleDrop = useCallback((targetCategory: string) => {
+    if (!dragState || dragState.sourceCategory === targetCategory) {
+      setDragState(null);
+      return;
+    }
+    const overrides = loadTagOverrides();
+    overrides[dragState.tag] = targetCategory;
+    saveTagOverrides(overrides);
+    setDragState(null);
+    setOverridesVersion((v) => v + 1);
+  }, [dragState]);
+
   return (
     <div className="space-y-2">
       {/* Status row: To-Try */}
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground w-20 shrink-0">Status</span>
+        <span className="text-xs font-medium text-muted-foreground w-20 shrink-0 tracking-wide uppercase">Status</span>
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
           <Badge
             variant={toTryActive ? "default" : "outline"}
@@ -175,8 +200,13 @@ const FacetedFilters = ({
 
       {/* Tag category rows */}
       {Object.entries(facetGroups).map(([catKey, tags]) => (
-        <div key={catKey} className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground w-20 shrink-0">
+        <div
+          key={catKey}
+          className={`flex items-center gap-2 ${dragState ? "border border-dashed border-transparent hover:border-primary/30 rounded-md p-1 -m-1 transition-colors" : ""}`}
+          onDragOver={(e) => { if (dragState) e.preventDefault(); }}
+          onDrop={() => handleDrop(catKey)}
+        >
+          <span className="text-xs font-medium text-muted-foreground w-20 shrink-0 tracking-wide uppercase">
             {categoryLabels[catKey] || catKey}
           </span>
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
@@ -184,12 +214,14 @@ const FacetedFilters = ({
               const isSelected = selectedFacets[catKey]?.has(tag);
               const available = isSelected ? 1 : getAvailableCount(catKey, tag);
               return (
-              <Badge
+                <Badge
                   key={tag}
                   variant={isSelected ? "default" : "outline"}
-                  className={`cursor-pointer text-xs whitespace-nowrap transition-all ${
+                  draggable
+                  onDragStart={() => handleDragStart(tag, catKey)}
+                  className={`cursor-pointer text-xs whitespace-nowrap transition-all select-none ${
                     available === 0 && !isSelected ? "opacity-40 cursor-not-allowed" : ""
-                  }`}
+                  } ${dragState?.tag === tag ? "opacity-50 ring-2 ring-primary/30" : ""}`}
                   onClick={() => available > 0 || isSelected ? onToggleFacet(catKey, tag) : undefined}
                 >
                   {tag}

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,105 @@ function convertUnit(amount: string | undefined, unit: string | undefined, toMet
   };
 }
 
+/** Detect if an ingredient line is a section header */
+function isIngredientHeader(ing: Ingredient): boolean {
+  const name = ing.name.trim();
+  // Wrapped in **double asterisks**
+  if (name.startsWith("**") && name.endsWith("**")) return true;
+  // Ends with colon
+  if (name.endsWith(":")) return true;
+  // ALL CAPS with no amount/unit (at least 2 chars, only letters/spaces/&/,)
+  if (!ing.amount && !ing.unit && /^[A-Z\s&,]{2,}$/.test(name)) return true;
+  return false;
+}
+
+/** Clean header display text */
+function headerDisplayText(name: string): string {
+  return name.replace(/^\*\*|\*\*$/g, "").replace(/:$/, "").trim();
+}
+
+/** Linked Instructions component — highlights ingredient names on hover */
+const LinkedInstructions = ({
+  markdown,
+  ingredientNames,
+  hoveredIngredient,
+  onHoverIngredient,
+}: {
+  markdown: string;
+  ingredientNames: string[];
+  hoveredIngredient: string | null;
+  onHoverIngredient: (name: string | null) => void;
+}) => {
+  // Build a regex that matches any ingredient name at word boundaries (min 3 chars to avoid noise)
+  const validNames = ingredientNames.filter((n) => n.length >= 3);
+  const pattern = useMemo(() => {
+    if (validNames.length === 0) return null;
+    const escaped = validNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
+  }, [validNames]);
+
+  const renderTextWithLinks = useCallback(
+    (text: string) => {
+      if (!pattern) return text;
+      const parts = text.split(pattern);
+      return parts.map((part, i) => {
+        const matchedName = validNames.find((n) => n.toLowerCase() === part.toLowerCase());
+        if (matchedName) {
+          return (
+            <span
+              key={i}
+              className={`cursor-default transition-all duration-150 ${
+                hoveredIngredient?.toLowerCase() === matchedName.toLowerCase()
+                  ? "underline decoration-primary/60 decoration-2 bg-kitchen-herb-light/50 rounded px-0.5"
+                  : "hover:underline hover:decoration-primary/40"
+              }`}
+              onMouseEnter={() => onHoverIngredient(matchedName)}
+              onMouseLeave={() => onHoverIngredient(null)}
+            >
+              {part}
+            </span>
+          );
+        }
+        return part;
+      });
+    },
+    [pattern, validNames, hoveredIngredient, onHoverIngredient]
+  );
+
+  return (
+    <div className="prose prose-sm prose-neutral max-w-none text-foreground/90">
+      <ReactMarkdown
+        components={{
+          p: ({ children }) => (
+            <p>
+              {typeof children === "string"
+                ? renderTextWithLinks(children)
+                : Array.isArray(children)
+                ? children.map((child, i) =>
+                    typeof child === "string" ? <span key={i}>{renderTextWithLinks(child)}</span> : child
+                  )
+                : children}
+            </p>
+          ),
+          li: ({ children }) => (
+            <li>
+              {typeof children === "string"
+                ? renderTextWithLinks(children)
+                : Array.isArray(children)
+                ? children.map((child, i) =>
+                    typeof child === "string" ? <span key={i}>{renderTextWithLinks(child)}</span> : child
+                  )
+                : children}
+            </li>
+          ),
+        }}
+      >
+        {markdown}
+      </ReactMarkdown>
+    </div>
+  );
+};
+
 const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: RecipeDetailProps) => {
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
   const [useMetric, setUseMetric] = useState(false);
@@ -65,9 +164,11 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
   const [editTags, setEditTags] = useState(recipe.nutritional_tags.join(", "));
   const [editNotes, setEditNotes] = useState(recipe.notes || "");
   const [editImageUrl, setEditImageUrl] = useState(recipe.image_url || "");
+  const [editSourceUrl, setEditSourceUrl] = useState(recipe.source_url || "");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
+  const [hoveredIngredient, setHoveredIngredient] = useState<string | null>(null);
 
   // Tag suggestion dropdown
   const [tagInputFocused, setTagInputFocused] = useState(false);
@@ -102,6 +203,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
     setEditTags(recipe.nutritional_tags.join(", "));
     setEditNotes(recipe.notes || "");
     setEditImageUrl(recipe.image_url || "");
+    setEditSourceUrl(recipe.source_url || "");
   }, [recipe]);
 
   const totalTime = recipe.total_time_minutes || ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
@@ -115,6 +217,11 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
     });
   }, [recipe.ingredients, servingsMultiplier, useMetric]);
 
+  const ingredientNames = useMemo(
+    () => recipe.ingredients.filter((ing) => !isIngredientHeader(ing)).map((ing) => ing.name),
+    [recipe.ingredients]
+  );
+
   const handleSave = async () => {
     if (!onUpdate) return;
     setSaving(true);
@@ -125,6 +232,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
       nutritional_tags: editTags.split(",").map((t) => t.trim()).filter(Boolean),
       notes: editNotes,
       image_url: editImageUrl.trim() || null,
+      source_url: editSourceUrl.trim() || null,
     };
     const success = await onUpdate(recipe.id, updates);
     setSaving(false);
@@ -154,7 +262,6 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
         const { data: urlData } = supabase.storage.from("recipe-images").getPublicUrl(path);
         lastUrl = urlData.publicUrl;
       }
-      // Set the last uploaded as the primary image
       await onUpdate(recipe.id, { image_url: lastUrl });
       setEditImageUrl(lastUrl);
     } catch {
@@ -172,7 +279,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
           {editing ? (
             <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-lg font-display bg-background" />
           ) : (
-            <h2 className="font-display text-xl text-foreground">{recipe.title}</h2>
+            <h2 className="font-display text-2xl tracking-tight text-foreground">{recipe.title}</h2>
           )}
           <div className="flex items-center gap-1 shrink-0">
             {onUpdate && !editing && (
@@ -221,15 +328,24 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
           )}
         </div>
 
-        {/* Image URL field in edit mode */}
+        {/* Image URL & Source URL fields in edit mode */}
         {editing && (
-          <div className="px-6 pt-3">
+          <div className="px-6 pt-3 space-y-2">
             <div className="flex items-center gap-2">
               <LinkIcon className="w-4 h-4 text-muted-foreground shrink-0" />
               <Input
                 value={editImageUrl}
                 onChange={(e) => setEditImageUrl(e.target.value)}
                 placeholder="Image URL (paste a link to an image)"
+                className="bg-background text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <ExternalLink className="w-4 h-4 text-muted-foreground shrink-0" />
+              <Input
+                value={editSourceUrl}
+                onChange={(e) => setEditSourceUrl(e.target.value)}
+                placeholder="Source URL (original recipe link)"
                 className="bg-background text-sm"
               />
             </div>
@@ -250,7 +366,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
           {totalTime && (
             <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {totalTime} min</span>
           )}
-          {recipe.source_url && (
+          {recipe.source_url && !editing && (
             <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-primary hover:underline">
               <ExternalLink className="w-4 h-4" /> Source
             </a>
@@ -315,7 +431,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left: Ingredients */}
           <div>
-            <h3 className="font-display text-lg mb-3 text-foreground">Ingredients</h3>
+            <h3 className="font-display text-lg tracking-tight mb-3 text-foreground">Ingredients</h3>
             {editing ? (
               <div className="space-y-2">
                 {editIngredients.map((ing, i) => (
@@ -333,37 +449,58 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
                 </Button>
               </div>
             ) : (
-              <ul className="space-y-2">
-                {scaledIngredients.map((ing, i) => (
-                  <li key={i} className="flex items-center gap-2.5 text-sm">
-                    <Checkbox
-                      checked={checkedIngredients.has(i)}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(checkedIngredients);
-                        checked ? next.add(i) : next.delete(i);
-                        setCheckedIngredients(next);
-                      }}
-                    />
-                    <span className={checkedIngredients.has(i) ? "line-through text-muted-foreground" : ""}>
-                      {ing.amount && <span className="font-medium">{ing.amount} </span>}
-                      {ing.unit && <span className="text-muted-foreground">{ing.unit} </span>}
-                      {ing.name}
-                    </span>
-                  </li>
-                ))}
+              <ul className="space-y-1">
+                {scaledIngredients.map((ing, i) => {
+                  const isHeader = isIngredientHeader(ing);
+                  if (isHeader) {
+                    return (
+                      <li key={i} className="font-display text-sm font-semibold mt-4 first:mt-0 border-b border-border/40 pb-1 text-foreground">
+                        {headerDisplayText(ing.name)}
+                      </li>
+                    );
+                  }
+                  const isHovered = hoveredIngredient?.toLowerCase() === ing.name.toLowerCase();
+                  return (
+                    <li
+                      key={i}
+                      className={`flex items-center gap-2.5 text-sm py-0.5 px-1 rounded transition-colors duration-150 ${
+                        isHovered ? "bg-kitchen-herb-light" : ""
+                      }`}
+                      onMouseEnter={() => setHoveredIngredient(ing.name)}
+                      onMouseLeave={() => setHoveredIngredient(null)}
+                    >
+                      <Checkbox
+                        checked={checkedIngredients.has(i)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(checkedIngredients);
+                          checked ? next.add(i) : next.delete(i);
+                          setCheckedIngredients(next);
+                        }}
+                      />
+                      <span className={checkedIngredients.has(i) ? "line-through text-muted-foreground" : ""}>
+                        {ing.amount && <span className="font-medium">{ing.amount} </span>}
+                        {ing.unit && <span className="text-muted-foreground">{ing.unit} </span>}
+                        {ing.name}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
 
           {/* Right: Instructions */}
           <div>
-            <h3 className="font-display text-lg mb-3 text-foreground">Instructions</h3>
+            <h3 className="font-display text-lg tracking-tight mb-3 text-foreground">Instructions</h3>
             {editing ? (
               <Textarea value={editInstructions} onChange={(e) => setEditInstructions(e.target.value)} className="min-h-[300px] bg-background text-sm" />
             ) : (
-              <div className="prose prose-sm max-w-none text-foreground/90">
-                <ReactMarkdown>{recipe.instructions}</ReactMarkdown>
-              </div>
+              <LinkedInstructions
+                markdown={recipe.instructions}
+                ingredientNames={ingredientNames}
+                hoveredIngredient={hoveredIngredient}
+                onHoverIngredient={setHoveredIngredient}
+              />
             )}
           </div>
         </div>
@@ -371,7 +508,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
         {/* Notes Section */}
         {editing ? (
           <div className="px-6 pb-4">
-            <h3 className="font-display text-lg mb-2 text-foreground">Notes</h3>
+            <h3 className="font-display text-lg tracking-tight mb-2 text-foreground">Notes</h3>
             <Textarea
               value={editNotes}
               onChange={(e) => setEditNotes(e.target.value)}
@@ -381,14 +518,14 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
           </div>
         ) : recipe.notes ? (
           <div className="px-6 pb-4">
-            <h3 className="font-display text-lg mb-2 text-foreground">Notes</h3>
-            <div className="prose prose-sm max-w-none text-foreground/90 bg-muted/50 rounded-lg p-4">
+            <h3 className="font-display text-lg tracking-tight mb-2 text-foreground">Notes</h3>
+            <div className="prose prose-sm prose-neutral max-w-none text-foreground/90 bg-muted/50 rounded-lg p-4">
               <ReactMarkdown>{recipe.notes}</ReactMarkdown>
             </div>
           </div>
         ) : null}
 
-        {/* Delete button pinned to bottom-left */}
+        {/* Delete button */}
         {onDelete && (
           <div className="px-6 pb-6 pt-2">
             <Button variant="ghost" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive hover:bg-destructive/10 text-xs">
