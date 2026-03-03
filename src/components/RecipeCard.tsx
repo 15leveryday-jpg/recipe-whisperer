@@ -19,7 +19,7 @@ const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
   return (
     <button
       onClick={onClick}
-      className="group w-full text-left bg-card rounded-lg shadow-card hover:shadow-elevated transition-all duration-300 overflow-hidden border border-border/50 animate-fade-in"
+      className="group w-full text-left bg-card rounded-lg shadow-card hover:shadow-elevated transition-all duration-300 overflow-hidden border border-border/30 animate-fade-in"
     >
       <div className="relative">
         {recipe.image_url ? (
@@ -39,7 +39,7 @@ const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
       </div>
 
       <div className="p-4 space-y-3">
-        <h3 className="font-display text-lg text-foreground leading-tight group-hover:text-primary transition-colors">
+        <h3 className="font-display text-lg tracking-tight text-foreground leading-tight group-hover:text-primary transition-colors">
           {recipe.title}
         </h3>
 

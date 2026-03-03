@@ -49,7 +49,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="font-display text-2xl text-foreground">Recipe Vault</h1>
+          <h1 className="font-display text-2xl tracking-tight text-foreground">Recipe Vault</h1>
           <div className="flex items-center gap-3">
             <Button onClick={() => setShowImport(true)} className="gap-2">
               <Plus className="w-4 h-4" /> Import
