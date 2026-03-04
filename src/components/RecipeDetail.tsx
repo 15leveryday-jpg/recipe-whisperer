@@ -33,6 +33,15 @@ const metricToImperial: Record<string, { factor: number; to: string }> = {
   ml: { factor: 0.033814, to: "fl oz" }, l: { factor: 0.264172, to: "gallon" },
 };
 
+// Terms to ignore when matching ingredients to instructions
+const IGNORED_TERMS = new Set([
+  "vegetables", "mixture", "ingredients", "sauce", "oil", "water", "salt",
+  "pepper", "heat", "medium", "large", "small", "cup", "tablespoon",
+  "teaspoon", "ounce", "cloves", "minutes", "degrees", "pinch", "dash",
+  "slice", "piece", "bunch", "cooking", "fresh", "dried", "ground",
+  "chopped", "diced", "minced", "sliced", "optional", "garnish",
+]);
+
 function scaleAmount(amount: string | undefined, multiplier: number): string {
   if (!amount) return "";
   const num = parseFloat(amount);
@@ -55,45 +64,90 @@ function convertUnit(amount: string | undefined, unit: string | undefined, toMet
   };
 }
 
-/** Detect if an ingredient line is a section header */
 function isIngredientHeader(ing: Ingredient): boolean {
   const name = ing.name.trim();
-  // Wrapped in **double asterisks**
   if (name.startsWith("**") && name.endsWith("**")) return true;
-  // Ends with colon
   if (name.endsWith(":")) return true;
-  // ALL CAPS with no amount/unit (at least 2 chars, only letters/spaces/&/,)
   if (!ing.amount && !ing.unit && /^[A-Z\s&,]{2,}$/.test(name)) return true;
   return false;
 }
 
-/** Clean header display text */
 function headerDisplayText(name: string): string {
   return name.replace(/^\*\*|\*\*$/g, "").replace(/:$/, "").trim();
 }
 
-/** Linked Instructions component — highlights ingredient names on hover */
+/** Split instructions into paragraphs/steps for mapping */
+function splitIntoSteps(markdown: string): string[] {
+  return markdown.split(/\n\n+|\n(?=\d+\.\s)|\n(?=-\s)/).filter((s) => s.trim());
+}
+
+/** Build a map: stepIndex → Set of ingredient indices that appear in that step */
+function buildStepIngredientMap(
+  steps: string[],
+  ingredients: Ingredient[]
+): Map<number, Set<number>> {
+  const map = new Map<number, Set<number>>();
+
+  // Pre-compute ingredient patterns (only non-header, non-ignored, 3+ chars)
+  const ingredientPatterns = ingredients.map((ing, idx) => {
+    if (isIngredientHeader(ing)) return null;
+    const name = ing.name.trim().toLowerCase();
+    if (name.length < 3 || IGNORED_TERMS.has(name)) return null;
+    // Use word boundary regex
+    try {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return { idx, pattern: new RegExp(`\\b${escaped}\\b`, "i") };
+    } catch {
+      return null;
+    }
+  });
+
+  const validPatterns = ingredientPatterns.filter(Boolean) as { idx: number; pattern: RegExp }[];
+
+  steps.forEach((step, stepIdx) => {
+    const matches = new Set<number>();
+    for (const { idx, pattern } of validPatterns) {
+      if (pattern.test(step)) {
+        matches.add(idx);
+      }
+    }
+    if (matches.size > 0) {
+      map.set(stepIdx, matches);
+    }
+  });
+
+  return map;
+}
+
+/** LinkedInstructions — paragraph-level hover highlighting */
 const LinkedInstructions = ({
   markdown,
   ingredientNames,
-  hoveredIngredient,
-  onHoverIngredient,
+  hoveredStepIndex,
+  onHoverStep,
+  stepIngredientMap,
 }: {
   markdown: string;
   ingredientNames: string[];
-  hoveredIngredient: string | null;
-  onHoverIngredient: (name: string | null) => void;
+  hoveredStepIndex: number | null;
+  onHoverStep: (index: number | null) => void;
+  stepIngredientMap: Map<number, Set<number>>;
 }) => {
-  // Build a regex that matches any ingredient name at word boundaries (min 3 chars to avoid noise)
-  const validNames = ingredientNames.filter((n) => n.length >= 3);
+  const validNames = ingredientNames.filter((n) => n.length >= 3 && !IGNORED_TERMS.has(n.toLowerCase()));
   const pattern = useMemo(() => {
     if (validNames.length === 0) return null;
     const escaped = validNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
     return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
   }, [validNames]);
 
-  const renderTextWithLinks = useCallback(
-    (text: string) => {
+  // Track paragraph index across ReactMarkdown renders
+  const stepCounterRef = useRef(0);
+
+  // Reset counter on each render
+  stepCounterRef.current = 0;
+
+  const renderTextWithHighlights = useCallback(
+    (text: string, isActiveStep: boolean) => {
       if (!pattern) return text;
       const parts = text.split(pattern);
       return parts.map((part, i) => {
@@ -102,13 +156,11 @@ const LinkedInstructions = ({
           return (
             <span
               key={i}
-              className={`cursor-default transition-all duration-150 ${
-                hoveredIngredient?.toLowerCase() === matchedName.toLowerCase()
+              className={`transition-all duration-300 ${
+                isActiveStep
                   ? "underline decoration-primary/60 decoration-2 bg-kitchen-herb-light/50 rounded px-0.5"
-                  : "hover:underline hover:decoration-primary/40"
+                  : ""
               }`}
-              onMouseEnter={() => onHoverIngredient(matchedName)}
-              onMouseLeave={() => onHoverIngredient(null)}
             >
               {part}
             </span>
@@ -117,37 +169,46 @@ const LinkedInstructions = ({
         return part;
       });
     },
-    [pattern, validNames, hoveredIngredient, onHoverIngredient]
+    [pattern, validNames]
   );
+
+  const createBlockRenderer = (Tag: "p" | "li") => {
+    const BlockRenderer = ({ children }: { children?: React.ReactNode }) => {
+      const currentStep = stepCounterRef.current++;
+      const isActive = hoveredStepIndex === currentStep;
+      const hasMatches = stepIngredientMap.has(currentStep);
+
+      return (
+        <Tag
+          onMouseEnter={hasMatches ? () => onHoverStep(currentStep) : undefined}
+          onMouseLeave={hasMatches ? () => onHoverStep(null) : undefined}
+          className={`transition-all duration-300 rounded-lg px-2 py-1 -mx-2 ${
+            isActive ? "bg-muted/40" : hasMatches ? "cursor-default" : ""
+          }`}
+        >
+          {typeof children === "string"
+            ? renderTextWithHighlights(children, isActive)
+            : Array.isArray(children)
+            ? children.map((child, i) =>
+                typeof child === "string" ? <span key={i}>{renderTextWithHighlights(child, isActive)}</span> : child
+              )
+            : children}
+        </Tag>
+      );
+    };
+    BlockRenderer.displayName = `Block${Tag}`;
+    return BlockRenderer;
+  };
+
+  const components = useMemo(() => ({
+    p: createBlockRenderer("p"),
+    li: createBlockRenderer("li"),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [hoveredStepIndex, renderTextWithHighlights, stepIngredientMap]);
 
   return (
     <div className="prose prose-sm prose-neutral max-w-none text-foreground/90">
-      <ReactMarkdown
-        components={{
-          p: ({ children }) => (
-            <p>
-              {typeof children === "string"
-                ? renderTextWithLinks(children)
-                : Array.isArray(children)
-                ? children.map((child, i) =>
-                    typeof child === "string" ? <span key={i}>{renderTextWithLinks(child)}</span> : child
-                  )
-                : children}
-            </p>
-          ),
-          li: ({ children }) => (
-            <li>
-              {typeof children === "string"
-                ? renderTextWithLinks(children)
-                : Array.isArray(children)
-                ? children.map((child, i) =>
-                    typeof child === "string" ? <span key={i}>{renderTextWithLinks(child)}</span> : child
-                  )
-                : children}
-            </li>
-          ),
-        }}
-      >
+      <ReactMarkdown components={components}>
         {markdown}
       </ReactMarkdown>
     </div>
@@ -168,7 +229,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
-  const [hoveredIngredient, setHoveredIngredient] = useState<string | null>(null);
+  const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null);
 
   // Tag suggestion dropdown
   const [tagInputFocused, setTagInputFocused] = useState(false);
@@ -188,14 +249,12 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
     tagInputRef.current?.focus();
   };
 
-  // Esc to close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
-  // Sync recipe prop changes
   useEffect(() => {
     setEditTitle(recipe.title);
     setEditInstructions(recipe.instructions);
@@ -221,6 +280,19 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
     () => recipe.ingredients.filter((ing) => !isIngredientHeader(ing)).map((ing) => ing.name),
     [recipe.ingredients]
   );
+
+  // Pre-compute step→ingredient mapping
+  const instructionSteps = useMemo(() => splitIntoSteps(recipe.instructions), [recipe.instructions]);
+  const stepIngredientMap = useMemo(
+    () => buildStepIngredientMap(instructionSteps, recipe.ingredients),
+    [instructionSteps, recipe.ingredients]
+  );
+
+  // Which ingredient indices are highlighted by the current hovered step
+  const highlightedIngredients = useMemo(() => {
+    if (hoveredStepIndex === null) return new Set<number>();
+    return stepIngredientMap.get(hoveredStepIndex) || new Set<number>();
+  }, [hoveredStepIndex, stepIngredientMap]);
 
   const handleSave = async () => {
     if (!onUpdate) return;
@@ -459,15 +531,15 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
                       </li>
                     );
                   }
-                  const isHovered = hoveredIngredient?.toLowerCase() === ing.name.toLowerCase();
+                  const isHighlighted = highlightedIngredients.has(i);
                   return (
                     <li
                       key={i}
-                      className={`flex items-center gap-2.5 text-sm py-0.5 px-1 rounded transition-colors duration-150 ${
-                        isHovered ? "bg-kitchen-herb-light" : ""
+                      className={`flex items-center gap-2.5 text-sm py-1 px-2 rounded transition-all duration-300 origin-left ${
+                        isHighlighted
+                          ? "bg-kitchen-herb-light scale-[1.03] border-l-4 border-kitchen-herb"
+                          : "border-l-4 border-transparent"
                       }`}
-                      onMouseEnter={() => setHoveredIngredient(ing.name)}
-                      onMouseLeave={() => setHoveredIngredient(null)}
                     >
                       <Checkbox
                         checked={checkedIngredients.has(i)}
@@ -498,8 +570,9 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
               <LinkedInstructions
                 markdown={recipe.instructions}
                 ingredientNames={ingredientNames}
-                hoveredIngredient={hoveredIngredient}
-                onHoverIngredient={setHoveredIngredient}
+                hoveredStepIndex={hoveredStepIndex}
+                onHoverStep={setHoveredStepIndex}
+                stepIngredientMap={stepIngredientMap}
               />
             )}
           </div>
