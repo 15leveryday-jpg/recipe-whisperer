@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import EditableIngredients from "@/components/EditableIngredients";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -505,21 +506,10 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
           <div>
             <h3 className="font-display text-lg tracking-tight mb-3 text-foreground">Ingredients</h3>
             {editing ? (
-              <div className="space-y-2">
-                {editIngredients.map((ing, i) => (
-                  <div key={i} className="flex gap-1">
-                    <Input value={ing.amount || ""} onChange={(e) => { const arr = [...editIngredients]; arr[i] = { ...arr[i], amount: e.target.value }; setEditIngredients(arr); }} placeholder="Amt" className="w-16 bg-background text-sm" />
-                    <Input value={ing.unit || ""} onChange={(e) => { const arr = [...editIngredients]; arr[i] = { ...arr[i], unit: e.target.value }; setEditIngredients(arr); }} placeholder="Unit" className="w-16 bg-background text-sm" />
-                    <Input value={ing.name} onChange={(e) => { const arr = [...editIngredients]; arr[i] = { ...arr[i], name: e.target.value }; setEditIngredients(arr); }} placeholder="Name" className="flex-1 bg-background text-sm" />
-                    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => setEditIngredients(editIngredients.filter((_, j) => j !== i))}>
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ))}
-                <Button variant="outline" size="sm" onClick={() => setEditIngredients([...editIngredients, { name: "" }])}>
-                  <Plus className="w-3 h-3 mr-1" /> Add
-                </Button>
-              </div>
+              <EditableIngredients
+                ingredients={editIngredients}
+                onChange={setEditIngredients}
+              />
             ) : (
               <ul className="space-y-1">
                 {scaledIngredients.map((ing, i) => {
