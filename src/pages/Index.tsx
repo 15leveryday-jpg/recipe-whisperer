@@ -126,6 +126,14 @@ const Index = () => {
           }}
           onDelete={deleteRecipe}
           allTags={allTags}
+          onNext={() => {
+            const idx = recipes.findIndex((r) => r.id === selectedRecipe.id);
+            if (idx < recipes.length - 1) setSelectedRecipe(recipes[idx + 1]);
+          }}
+          onPrev={() => {
+            const idx = recipes.findIndex((r) => r.id === selectedRecipe.id);
+            if (idx > 0) setSelectedRecipe(recipes[idx - 1]);
+          }}
         />
       )}
       {showImport && (

@@ -18,6 +18,8 @@ interface RecipeDetailProps {
   onUpdate?: (id: string, updates: Partial<Recipe>) => Promise<boolean>;
   onDelete?: (id: string) => Promise<boolean>;
   allTags?: string[];
+  onNext?: () => void;
+  onPrev?: () => void;
 }
 
 // Unit conversion tables
@@ -245,7 +247,7 @@ const LinkedInstructions = ({
   );
 };
 
-const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: RecipeDetailProps) => {
+const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNext, onPrev }: RecipeDetailProps) => {
   const [servingsMultiplier, setServingsMultiplier] = useState(1);
   const [useMetric, setUseMetric] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -280,10 +282,17 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [] }: Rec
   };
 
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const handler = (e: KeyboardEvent) => {
+      // Don't navigate if user is typing in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft" && onPrev) { e.preventDefault(); onPrev(); }
+      if (e.key === "ArrowRight" && onNext) { e.preventDefault(); onNext(); }
+    };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [onClose, onNext, onPrev]);
 
   useEffect(() => {
     setEditTitle(recipe.title);
