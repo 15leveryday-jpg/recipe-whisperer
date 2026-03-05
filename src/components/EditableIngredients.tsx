@@ -27,6 +27,7 @@ interface EditableIngredientsProps {
 }
 
 function isIngredientHeader(ing: Ingredient): boolean {
+  if (ing.is_header) return true;
   const name = ing.name.trim();
   if (name.startsWith("**") && name.endsWith("**")) return true;
   if (name.endsWith(":")) return true;
@@ -208,7 +209,7 @@ export default function EditableIngredients({
   const addSection = () => {
     const newIdx = ingredients.length;
     idMap.set(newIdx, `ing-${Date.now()}-${newIdx}-${Math.random().toString(36).slice(2, 6)}`);
-    onChange([...ingredients, { name: "New Section:", amount: undefined, unit: undefined }]);
+    onChange([...ingredients, { name: "New Section:", amount: undefined, unit: undefined, is_header: true }]);
   };
 
   return (
