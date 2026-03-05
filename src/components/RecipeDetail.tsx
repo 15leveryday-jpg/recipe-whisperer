@@ -66,6 +66,7 @@ function convertUnit(amount: string | undefined, unit: string | undefined, toMet
 }
 
 function isIngredientHeader(ing: Ingredient): boolean {
+  if (ing.is_header) return true;
   const name = ing.name.trim();
   if (name.startsWith("**") && name.endsWith("**")) return true;
   if (name.endsWith(":")) return true;
