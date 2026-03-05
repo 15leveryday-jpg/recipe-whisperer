@@ -42,7 +42,7 @@ const IGNORED_TERMS = new Set([
   "pepper", "heat", "medium", "large", "small", "cup", "tablespoon",
   "teaspoon", "ounce", "cloves", "minutes", "degrees", "pinch", "dash",
   "slice", "piece", "bunch", "cooking", "fresh", "dried", "ground",
-  "chopped", "diced", "minced", "sliced", "optional", "garnish",
+  "chopped", "diced", "minced", "sliced", "optional", "garnish", "and",
 ]);
 
 function scaleAmount(amount: string | undefined, multiplier: number): string {
