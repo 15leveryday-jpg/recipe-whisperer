@@ -89,27 +89,40 @@ function buildStepIngredientMap(
   ingredients: Ingredient[]
 ): Map<number, Set<number>> {
   const map = new Map<number, Set<number>>();
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-  // Pre-compute ingredient patterns (only non-header, non-ignored, 3+ chars)
-  const ingredientPatterns = ingredients.map((ing, idx) => {
-    if (isIngredientHeader(ing)) return null;
+  // Pre-compute patterns: full name + individual significant words
+  const ingredientPatterns: { idx: number; patterns: RegExp[] }[] = [];
+
+  ingredients.forEach((ing, idx) => {
+    if (isIngredientHeader(ing)) return;
     const name = ing.name.trim().toLowerCase();
-    if (name.length < 3 || IGNORED_TERMS.has(name)) return null;
-    // Use word boundary regex
-    try {
-      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      return { idx, pattern: new RegExp(`\\b${escaped}\\b`, "i") };
-    } catch {
-      return null;
+    if (name.length < 3 || IGNORED_TERMS.has(name)) return;
+
+    const patterns: RegExp[] = [];
+
+    // Full name match
+    try { patterns.push(new RegExp(`\\b${esc(name)}\\b`, "i")); } catch {}
+
+    // Also match individual words (3+ chars, not ignored)
+    // Strip commas and common prep descriptors before splitting
+    const cleaned = name.replace(/,/g, " ");
+    const words = cleaned.split(/\s+/).filter(
+      (w) => w.length >= 3 && !IGNORED_TERMS.has(w.toLowerCase())
+    );
+    for (const word of words) {
+      try { patterns.push(new RegExp(`\\b${esc(word)}\\b`, "i")); } catch {}
+    }
+
+    if (patterns.length > 0) {
+      ingredientPatterns.push({ idx, patterns });
     }
   });
 
-  const validPatterns = ingredientPatterns.filter(Boolean) as { idx: number; pattern: RegExp }[];
-
   steps.forEach((step, stepIdx) => {
     const matches = new Set<number>();
-    for (const { idx, pattern } of validPatterns) {
-      if (pattern.test(step)) {
+    for (const { idx, patterns } of ingredientPatterns) {
+      if (patterns.some((p) => p.test(step))) {
         matches.add(idx);
       }
     }
@@ -135,12 +148,27 @@ const LinkedInstructions = ({
   onHoverStep: (index: number | null) => void;
   stepIngredientMap: Map<number, Set<number>>;
 }) => {
-  const validNames = ingredientNames.filter((n) => n.length >= 3 && !IGNORED_TERMS.has(n.toLowerCase()));
+  // Build highlight words: include full names + individual significant words
+  const highlightWords = useMemo(() => {
+    const words = new Set<string>();
+    for (const name of ingredientNames) {
+      const n = name.trim();
+      if (n.length >= 3 && !IGNORED_TERMS.has(n.toLowerCase())) words.add(n);
+      const cleaned = n.replace(/,/g, " ");
+      for (const w of cleaned.split(/\s+/)) {
+        if (w.length >= 3 && !IGNORED_TERMS.has(w.toLowerCase())) words.add(w);
+      }
+    }
+    return [...words];
+  }, [ingredientNames]);
+
   const pattern = useMemo(() => {
-    if (validNames.length === 0) return null;
-    const escaped = validNames.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    if (highlightWords.length === 0) return null;
+    // Sort by length descending so longer phrases match first
+    const sorted = [...highlightWords].sort((a, b) => b.length - a.length);
+    const escaped = sorted.map((n) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
     return new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
-  }, [validNames]);
+  }, [highlightWords]);
 
   // Track paragraph index across ReactMarkdown renders
   const stepCounterRef = useRef(0);
@@ -153,7 +181,7 @@ const LinkedInstructions = ({
       if (!pattern) return text;
       const parts = text.split(pattern);
       return parts.map((part, i) => {
-        const matchedName = validNames.find((n) => n.toLowerCase() === part.toLowerCase());
+        const matchedName = highlightWords.find((n) => n.toLowerCase() === part.toLowerCase());
         if (matchedName) {
           return (
             <span
@@ -171,7 +199,7 @@ const LinkedInstructions = ({
         return part;
       });
     },
-    [pattern, validNames]
+    [pattern, highlightWords]
   );
 
   const createBlockRenderer = (Tag: "p" | "li") => {
