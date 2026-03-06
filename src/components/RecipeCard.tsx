@@ -1,4 +1,4 @@
-import { Clock, Users, ChefHat, Bookmark } from "lucide-react";
+import { Clock, Users, ChefHat, Bookmark, CalendarPlus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { isRecipeToTry } from "@/components/FacetedFilters";
@@ -8,9 +8,11 @@ interface RecipeCardProps {
   recipe: Recipe;
   matchPercentage?: number;
   onClick: () => void;
+  onAddToWeek?: (recipe: Recipe) => void;
+  isInWeek?: boolean;
 }
 
-const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
+const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }: RecipeCardProps) => {
   const totalTime = recipe.total_time_minutes ||
     ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
 
@@ -35,6 +37,19 @@ const RecipeCard = ({ recipe, matchPercentage, onClick }: RecipeCardProps) => {
           <span className="absolute top-2 left-2 bg-to-try text-to-try-foreground text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 shadow-elevated">
             <Bookmark className="w-3 h-3" /> To Try
           </span>
+        )}
+        {onAddToWeek && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onAddToWeek(recipe); }}
+            className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-elevated ${
+              isInWeek
+                ? "bg-primary text-primary-foreground"
+                : "bg-card/90 text-foreground hover:bg-primary hover:text-primary-foreground"
+            }`}
+            title={isInWeek ? "In your week" : "Add to Week"}
+          >
+            <CalendarPlus className="w-4 h-4" />
+          </button>
         )}
       </div>
 

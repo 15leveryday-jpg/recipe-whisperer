@@ -3,12 +3,15 @@ import { Plus, LogOut, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecipes } from "@/hooks/useRecipes";
+import { useMealPlan } from "@/hooks/useMealPlan";
 import AuthForm from "@/components/AuthForm";
 import RecipeCard from "@/components/RecipeCard";
 import RecipeDetail from "@/components/RecipeDetail";
 import ImportModal from "@/components/ImportModal";
 import SearchBar from "@/components/SearchBar";
 import FacetedFilters from "@/components/FacetedFilters";
+import MealPlanDock from "@/components/MealPlanDock";
+import MealPlanDrawer from "@/components/MealPlanDrawer";
 import type { Recipe } from "@/types/recipe";
 
 const Index = () => {
@@ -31,6 +34,9 @@ const Index = () => {
     updateRecipe,
     deleteRecipe,
   } = useRecipes(user?.id);
+
+  const { meals, addMeal, removeMeal, clearMeals, drawerOpen, setDrawerOpen } = useMealPlan();
+  const mealIds = new Set(meals.map((m) => m.id));
 
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showImport, setShowImport] = useState(false);
@@ -109,6 +115,8 @@ const Index = () => {
                 recipe={recipe}
                 matchPercentage={(recipe as any).matchPercentage}
                 onClick={() => setSelectedRecipe(recipe)}
+                onAddToWeek={addMeal}
+                isInWeek={mealIds.has(recipe.id)}
               />
             ))}
           </div>
@@ -139,6 +147,15 @@ const Index = () => {
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onImported={fetchRecipes} />
       )}
+      <MealPlanDock meals={meals} onExpand={() => setDrawerOpen(true)} onRemove={removeMeal} />
+      <MealPlanDrawer
+        meals={meals}
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onRemove={removeMeal}
+        onClear={clearMeals}
+        onOpenRecipe={(r) => { setDrawerOpen(false); setSelectedRecipe(r); }}
+      />
     </div>
   );
 };
