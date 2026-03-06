@@ -383,10 +383,13 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex justify-end">
-      <div className="w-full max-w-3xl bg-card h-full overflow-y-auto shadow-float animate-slide-in">
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-4xl bg-card rounded-xl max-h-[90vh] overflow-y-auto shadow-float animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border z-10 p-4 flex items-center justify-between gap-2">
+        <div className="sticky top-0 bg-card/95 backdrop-blur-sm border-b border-border z-10 p-4 flex items-center justify-between gap-2 rounded-t-xl">
           {editing ? (
             <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="text-lg font-display bg-background" />
           ) : (
@@ -540,8 +543,8 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
 
         {/* Two-column Kitchen Mode */}
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left: Ingredients */}
-          <div>
+          {/* Left: Ingredients (sticky) */}
+          <div className="md:sticky md:top-0 md:self-start md:max-h-[80vh] md:overflow-y-auto scrollbar-hide">
             <h3 className="font-display text-lg tracking-tight mb-3 text-foreground">Ingredients</h3>
             {editing ? (
               <EditableIngredients
