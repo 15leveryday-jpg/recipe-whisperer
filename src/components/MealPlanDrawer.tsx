@@ -32,6 +32,7 @@ interface MealPlanDrawerProps {
 }
 
 const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe }: MealPlanDrawerProps) => {
+  const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
