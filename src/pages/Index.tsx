@@ -44,6 +44,18 @@ const Index = () => {
 
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const backfillRan = useRef(false);
+
+  // Auto-backfill embeddings for existing recipes on first load
+  useEffect(() => {
+    if (!user || backfillRan.current) return;
+    backfillRan.current = true;
+    supabase.functions.invoke("backfill-embeddings").then(({ data }) => {
+      if (data?.processed > 0) {
+        console.log(`Backfilled embeddings for ${data.processed} recipes`);
+      }
+    }).catch(() => {/* silent */});
+  }, [user]);
 
   if (authLoading) {
     return (
