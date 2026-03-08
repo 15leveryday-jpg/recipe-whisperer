@@ -307,7 +307,64 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
     setEditNotes(recipe.notes || "");
     setEditImageUrl(recipe.image_url || "");
     setEditSourceUrl(recipe.source_url || "");
+    setLocalCookCount(recipe.cook_count || 0);
   }, [recipe]);
+
+  // Fetch cook logs
+  useEffect(() => {
+    const fetchLogs = async () => {
+      const { data } = await supabase
+        .from("recipe_logs")
+        .select("id, cooked_at")
+        .eq("recipe_id", recipe.id)
+        .order("cooked_at", { ascending: false });
+      setCookLogs((data as any) || []);
+    };
+    fetchLogs();
+  }, [recipe.id, localCookCount]);
+
+  const markAsCooked = async () => {
+    if (cookingInProgress) return;
+    setCookingInProgress(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Optimistic update
+      const newCount = localCookCount + 1;
+      setLocalCookCount(newCount);
+
+      // Insert log
+      const { error: logErr } = await supabase
+        .from("recipe_logs")
+        .insert({ recipe_id: recipe.id, user_id: user.id } as any);
+      if (logErr) throw logErr;
+
+      // Update cook_count
+      const { error: updateErr } = await supabase
+        .from("recipes")
+        .update({ cook_count: newCount } as any)
+        .eq("id", recipe.id);
+      if (updateErr) throw updateErr;
+
+      // Update parent state
+      onUpdate?.(recipe.id, { cook_count: newCount } as any);
+
+      // Confetti!
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.7 },
+        colors: ["hsl(142, 76%, 36%)", "hsl(45, 93%, 47%)", "hsl(0, 84%, 60%)"],
+      });
+      toast.success(`Cooked ${newCount} time${newCount > 1 ? "s" : ""}! 🎉`);
+    } catch {
+      setLocalCookCount((c) => c - 1);
+      toast.error("Failed to log cook");
+    } finally {
+      setCookingInProgress(false);
+    }
+  };
 
   const totalTime = recipe.total_time_minutes || ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
   const currentServings = recipe.servings ? Math.round(recipe.servings * servingsMultiplier) : null;
