@@ -16,6 +16,7 @@ import FacetedFilters from "@/components/FacetedFilters";
 import MealPlanDock from "@/components/MealPlanDock";
 import MealPlanDrawer from "@/components/MealPlanDrawer";
 import type { Recipe } from "@/types/recipe";
+import type { WeightedRecipe } from "@/hooks/useRecipes";
 
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -29,6 +30,8 @@ const Index = () => {
     hybridSearch,
     clearSearch,
     fetchRecipes,
+    localSearchQuery,
+    setLocalSearchQuery,
     selectedFacets,
     toggleFacet,
     toTryActive,
@@ -47,7 +50,6 @@ const Index = () => {
   const [showImport, setShowImport] = useState(false);
   const backfillRan = useRef(false);
 
-  // Auto-backfill embeddings for existing recipes on first load
   useEffect(() => {
     if (!user || backfillRan.current) return;
     backfillRan.current = true;
@@ -55,7 +57,7 @@ const Index = () => {
       if (data?.processed > 0) {
         console.log(`Backfilled embeddings for ${data.processed} recipes`);
       }
-    }).catch(() => {/* silent */});
+    }).catch(() => {});
   }, [user]);
 
   if (authLoading) {
@@ -67,6 +69,10 @@ const Index = () => {
   }
 
   if (!user) return <AuthForm />;
+
+  const handleClearSearch = () => {
+    clearSearch();
+  };
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -93,9 +99,13 @@ const Index = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4">
-        <SearchBar onSearch={hybridSearch} loading={searchLoading} />
+        <SearchBar
+          onSearch={hybridSearch}
+          onLocalSearch={setLocalSearchQuery}
+          localQuery={localSearchQuery}
+          loading={searchLoading}
+        />
 
-        {/* Faceted Filters */}
         <FacetedFilters
           allRecipes={allRecipes}
           selectedFacets={selectedFacets}
@@ -107,10 +117,10 @@ const Index = () => {
 
         {searchResults && (
           <button
-            onClick={clearSearch}
+            onClick={handleClearSearch}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <X className="w-3.5 h-3.5" /> Clear search
+            <X className="w-3.5 h-3.5" /> Clear AI search
           </button>
         )}
 
@@ -121,12 +131,12 @@ const Index = () => {
         ) : recipes.length === 0 ? (
           <div className="text-center py-20 space-y-3">
             <p className="font-display text-xl sm:text-2xl text-foreground">
-              {searchResults ? "No recipes match" : "Your vault is empty"}
+              {searchResults || localSearchQuery ? "No recipes match" : "Your vault is empty"}
             </p>
             <p className="text-muted-foreground">
-              {searchResults ? "Try a different search or adjust filters." : "Import your first recipe to get started."}
+              {searchResults || localSearchQuery ? "Try a different search or adjust filters." : "Import your first recipe to get started."}
             </p>
-            {!searchResults && (
+            {!searchResults && !localSearchQuery && (
               <Button onClick={() => setShowImport(true)} variant="outline" className="mt-4 gap-2">
                 <Plus className="w-4 h-4" /> Import Recipe
               </Button>
@@ -134,16 +144,20 @@ const Index = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {recipes.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                recipe={recipe}
-                matchPercentage={(recipe as any).matchPercentage}
-                onClick={() => setSelectedRecipe(recipe)}
-                onAddToWeek={addMeal}
-                isInWeek={mealIds.has(recipe.id)}
-              />
-            ))}
+            {recipes.map((recipe) => {
+              const weighted = recipe as WeightedRecipe;
+              return (
+                <RecipeCard
+                  key={recipe.id}
+                  recipe={recipe}
+                  matchPercentage={(recipe as any).matchPercentage}
+                  matchedIngredients={weighted.matchedIngredients}
+                  onClick={() => setSelectedRecipe(recipe)}
+                  onAddToWeek={addMeal}
+                  isInWeek={mealIds.has(recipe.id)}
+                />
+              );
+            })}
           </div>
         )}
       </main>

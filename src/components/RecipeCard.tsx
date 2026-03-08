@@ -7,12 +7,13 @@ import type { Recipe } from "@/types/recipe";
 interface RecipeCardProps {
   recipe: Recipe;
   matchPercentage?: number;
+  matchedIngredients?: string[];
   onClick: () => void;
   onAddToWeek?: (recipe: Recipe) => void;
   isInWeek?: boolean;
 }
 
-const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }: RecipeCardProps) => {
+const RecipeCard = ({ recipe, matchPercentage, matchedIngredients, onClick, onAddToWeek, isInWeek }: RecipeCardProps) => {
   const totalTime = recipe.total_time_minutes ||
     ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
 
@@ -77,6 +78,22 @@ const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }:
               <div className="h-full rounded-full bg-kitchen-herb transition-all" style={{ width: `${matchPercentage}%` }} />
             </div>
             <span className="text-xs font-medium text-kitchen-herb">{matchPercentage}%</span>
+          </div>
+        )}
+
+        {/* Matched ingredients highlight */}
+        {matchedIngredients && matchedIngredients.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {matchedIngredients.slice(0, 4).map((ing) => (
+              <span key={ing} className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                {ing}
+              </span>
+            ))}
+            {matchedIngredients.length > 4 && (
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                +{matchedIngredients.length - 4}
+              </span>
+            )}
           </div>
         )}
 
