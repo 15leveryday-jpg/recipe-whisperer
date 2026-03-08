@@ -88,13 +88,14 @@ const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe 
               return (
                 <div
                   key={recipe.id}
-                  className="flex gap-4 bg-background rounded-xl border border-border/50 p-4 hover:shadow-elevated transition-shadow group"
+                  onClick={() => onOpenRecipe(recipe)}
+                  className="flex gap-4 bg-background rounded-xl border border-border/50 p-4 cursor-pointer
+                    hover:shadow-elevated hover:bg-accent/20 hover:-translate-y-0.5
+                    active:translate-y-0 active:shadow-card
+                    transition-all duration-200 group"
                 >
                   {/* Thumbnail */}
-                  <button
-                    onClick={() => onOpenRecipe(recipe)}
-                    className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden"
-                  >
+                  <div className="flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden">
                     {recipe.image_url ? (
                       <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
@@ -102,17 +103,20 @@ const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe 
                         <ChefHat className="w-8 h-8 text-muted-foreground/40" />
                       </div>
                     )}
-                  </button>
+                  </div>
 
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <button onClick={() => onOpenRecipe(recipe)} className="text-left">
-                        <h3 className="font-display text-lg text-foreground leading-tight hover:text-primary transition-colors">
-                          {recipe.title}
-                        </h3>
-                      </button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={() => onRemove(recipe.id)}>
+                      <h3 className="font-display text-lg text-foreground leading-tight group-hover:text-primary transition-colors">
+                        {recipe.title}
+                      </h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => { e.stopPropagation(); onRemove(recipe.id); }}
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
