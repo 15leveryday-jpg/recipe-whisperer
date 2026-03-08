@@ -62,6 +62,14 @@ const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe 
             <p className="text-sm text-muted-foreground mt-0.5">{meals.length}/5 recipes selected</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => { onClose(); navigate("/shopping"); }}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" /> Shopping List
+            </Button>
             {meals.length > 0 && (
               <Button variant="ghost" size="sm" className="text-destructive" onClick={onClear}>
                 Clear All
