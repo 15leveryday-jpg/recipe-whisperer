@@ -180,7 +180,7 @@ export default function Shopping() {
               onClick={() => setActiveStoreFilter(
                 activeStoreFilter === store.id ? null : store.id
               )}
-              className="shrink-0 gap-1.5"
+              className="shrink-0 gap-1.5 min-h-[44px] sm:min-h-0"
             >
               <span
                 className="w-2.5 h-2.5 rounded-full shrink-0"
