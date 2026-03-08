@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from "react";
-import { X, Bookmark, GripVertical } from "lucide-react";
+import { X, Bookmark, ChefHat, Heart, UtensilsCrossed, Leaf, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Recipe } from "@/types/recipe";
@@ -13,26 +13,29 @@ interface FacetedFiltersProps {
   onToggleToTry: () => void;
 }
 
-// Tag categorization rules — Cuisine first per plan
-const FACET_CATEGORIES: { key: string; label: string; match: (tag: string) => boolean }[] = [
+const FACET_CATEGORIES: { key: string; label: string; icon: typeof ChefHat; match: (tag: string) => boolean }[] = [
   {
     key: "cuisine",
     label: "Cuisine",
+    icon: ChefHat,
     match: (t) => /korean|japanese|chinese|thai|indian|mexican|italian|french|greek|mediterranean|american|pasta|middle.eastern|african|vietnamese|spanish|cambodian/i.test(t),
   },
   {
     key: "dietary",
     label: "Dietary",
+    icon: Leaf,
     match: (t) => /vegan|vegetarian|pescatarian|gluten.free|dairy.free|paleo|keto|whole30|halal|kosher/i.test(t),
   },
   {
     key: "meal",
     label: "Meal Type",
+    icon: UtensilsCrossed,
     match: (t) => /breakfast|brunch|lunch|dinner|main|side|snack|dessert|appetizer|soup|salad|sandwich/i.test(t),
   },
   {
     key: "health",
-    label: "Health / Goals",
+    label: "Health",
+    icon: Heart,
     match: (t) => /protein|low.cal|low.carb|fiber|iron|vitamin|omega|antioxidant|heart|energy|weight/i.test(t),
   },
 ];
@@ -42,7 +45,6 @@ export function normalizeTagLabel(tag: string): string {
   return tag.replace(/\s*\(.*\)\s*$/, "").trim();
 }
 
-/** localStorage key for user tag category overrides */
 const TAG_OVERRIDES_KEY = "tagCategoryOverrides";
 
 function loadTagOverrides(): Record<string, string> {
@@ -51,10 +53,6 @@ function loadTagOverrides(): Record<string, string> {
   } catch {
     return {};
   }
-}
-
-function saveTagOverrides(overrides: Record<string, string>) {
-  localStorage.setItem(TAG_OVERRIDES_KEY, JSON.stringify(overrides));
 }
 
 function categorizeTag(tag: string): string {
@@ -89,6 +87,8 @@ export function applyFacetedFilters(
   });
 }
 
+const MAX_VISIBLE = 5;
+
 const FacetedFilters = ({
   allRecipes,
   selectedFacets,
@@ -97,24 +97,35 @@ const FacetedFilters = ({
   toTryActive,
   onToggleToTry,
 }: FacetedFiltersProps) => {
-  const [dragState, setDragState] = useState<{ tag: string; sourceCategory: string } | null>(null);
-  const [overridesVersion, setOverridesVersion] = useState(0);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
-  const { facetGroups, hasAnyFilter } = useMemo(() => {
-    // Force recalc when overrides change
-    void overridesVersion;
-    const tagSet = new Set<string>();
-    allRecipes.forEach((r) => r.nutritional_tags.forEach((t) => tagSet.add(t)));
+  const toggleExpand = useCallback((catKey: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(catKey)) next.delete(catKey);
+      else next.add(catKey);
+      return next;
+    });
+  }, []);
+
+  const { facetGroups, tagFrequency, hasAnyFilter } = useMemo(() => {
+    const tagCount: Record<string, number> = {};
+    allRecipes.forEach((r) =>
+      r.nutritional_tags.forEach((t) => {
+        const n = normalizeTagLabel(t);
+        tagCount[n] = (tagCount[n] || 0) + 1;
+      })
+    );
 
     const groups: Record<string, string[]> = {};
     for (const cat of FACET_CATEGORIES) groups[cat.key] = [];
     groups["other"] = [];
 
     const seen: Record<string, Set<string>> = {};
-    tagSet.forEach((tag) => {
-      if (tag.toLowerCase() === "to-try") return;
-      const cat = categorizeTag(tag);
-      const normalized = normalizeTagLabel(tag);
+    Object.keys(tagCount).forEach((normalized) => {
+      // Find original tag to categorize
+      const cat = categorizeTag(normalized);
+      if (normalized.toLowerCase() === "to-try") return;
       if (!seen[cat]) seen[cat] = new Set();
       if (!seen[cat].has(normalized)) {
         seen[cat].add(normalized);
@@ -122,67 +133,44 @@ const FacetedFilters = ({
       }
     });
 
-    for (const key of Object.keys(groups)) groups[key].sort();
+    // Sort each group by frequency (descending)
+    for (const key of Object.keys(groups)) {
+      groups[key].sort((a, b) => (tagCount[b] || 0) - (tagCount[a] || 0));
+    }
     for (const key of Object.keys(groups)) {
       if (groups[key].length === 0) delete groups[key];
     }
 
     const hasAny = toTryActive || Object.values(selectedFacets).some((s) => s.size > 0);
-    return { facetGroups: groups, hasAnyFilter: hasAny };
-  }, [allRecipes, selectedFacets, toTryActive, overridesVersion]);
-
-  const getAvailableCount = (category: string, tag: string): number => {
-    const hypothetical: Record<string, Set<string>> = {};
-    for (const [k, v] of Object.entries(selectedFacets)) {
-      hypothetical[k] = new Set(v);
-    }
-    if (!hypothetical[category]) hypothetical[category] = new Set();
-    if (hypothetical[category].has(tag)) return 1;
-    hypothetical[category].add(tag);
-    return applyFacetedFilters(allRecipes, hypothetical, toTryActive).length;
-  };
-
-  const categoryLabels: Record<string, string> = {};
-  for (const cat of FACET_CATEGORIES) categoryLabels[cat.key] = cat.label;
-  categoryLabels["other"] = "Other";
+    return { facetGroups: groups, tagFrequency: tagCount, hasAnyFilter: hasAny };
+  }, [allRecipes, selectedFacets, toTryActive]);
 
   const toTryCount = allRecipes.filter(isRecipeToTry).length;
 
-  // Drag-and-drop handlers
-  const handleDragStart = useCallback((tag: string, sourceCategory: string) => {
-    setDragState({ tag, sourceCategory });
-  }, []);
-
-  const handleDrop = useCallback((targetCategory: string) => {
-    if (!dragState || dragState.sourceCategory === targetCategory) {
-      setDragState(null);
-      return;
-    }
-    const overrides = loadTagOverrides();
-    overrides[dragState.tag] = targetCategory;
-    saveTagOverrides(overrides);
-    setDragState(null);
-    setOverridesVersion((v) => v + 1);
-  }, [dragState]);
+  const categoryMeta: Record<string, { label: string; icon: typeof ChefHat }> = {};
+  for (const cat of FACET_CATEGORIES) categoryMeta[cat.key] = { label: cat.label, icon: cat.icon };
+  categoryMeta["other"] = { label: "Other", icon: MoreHorizontal };
 
   return (
-    <div className="space-y-2">
-      {/* Status row: To-Try */}
+    <div className="space-y-1.5">
+      {/* Status row */}
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-muted-foreground w-20 shrink-0 tracking-wide uppercase">Status</span>
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+        <span className="text-[11px] font-semibold text-muted-foreground w-24 shrink-0 tracking-widest uppercase flex items-center gap-1.5">
+          <Bookmark className="w-3.5 h-3.5" />
+          Status
+        </span>
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
           <Badge
             variant={toTryActive ? "default" : "outline"}
             className={`cursor-pointer text-xs whitespace-nowrap transition-all ${
               toTryActive
-                ? "bg-to-try text-to-try-foreground hover:bg-to-try/80 border-transparent"
+                ? "bg-primary text-primary-foreground border-primary hover:bg-primary/80"
                 : toTryCount === 0
                 ? "opacity-40 cursor-not-allowed"
-                : ""
+                : "bg-transparent border-border hover:bg-accent/40"
             }`}
             onClick={() => toTryCount > 0 && onToggleToTry()}
           >
-            <Bookmark className="w-3 h-3 mr-1" />
             To-Try ({toTryCount})
           </Badge>
         </div>
@@ -191,46 +179,70 @@ const FacetedFilters = ({
             variant="ghost"
             size="sm"
             onClick={onClearAll}
-            className="ml-auto text-xs text-muted-foreground hover:text-foreground shrink-0"
+            className="ml-auto text-xs text-muted-foreground hover:text-foreground shrink-0 h-7 px-2"
           >
-            <X className="w-3 h-3 mr-1" /> Clear All
+            <X className="w-3 h-3 mr-1" /> Clear
           </Button>
         )}
       </div>
 
       {/* Tag category rows */}
-      {Object.entries(facetGroups).map(([catKey, tags]) => (
-        <div
-          key={catKey}
-          className={`flex items-center gap-2 ${dragState ? "border border-dashed border-transparent hover:border-primary/30 rounded-md p-1 -m-1 transition-colors" : ""}`}
-          onDragOver={(e) => { if (dragState) e.preventDefault(); }}
-          onDrop={() => handleDrop(catKey)}
-        >
-          <span className="text-xs font-medium text-muted-foreground w-20 shrink-0 tracking-wide uppercase">
-            {categoryLabels[catKey] || catKey}
-          </span>
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
-            {tags.map((tag) => {
-              const isSelected = selectedFacets[catKey]?.has(tag);
-              const available = isSelected ? 1 : getAvailableCount(catKey, tag);
-              return (
-                <Badge
-                  key={tag}
-                  variant={isSelected ? "default" : "outline"}
-                  draggable
-                  onDragStart={() => handleDragStart(tag, catKey)}
-                  className={`cursor-pointer text-xs whitespace-nowrap transition-all select-none ${
-                    available === 0 && !isSelected ? "opacity-40 cursor-not-allowed" : ""
-                  } ${dragState?.tag === tag ? "opacity-50 ring-2 ring-primary/30" : ""}`}
-                  onClick={() => available > 0 || isSelected ? onToggleFacet(catKey, tag) : undefined}
+      {Object.entries(facetGroups).map(([catKey, tags]) => {
+        const meta = categoryMeta[catKey];
+        const Icon = meta?.icon || MoreHorizontal;
+        const isExpanded = expandedCategories.has(catKey);
+        const selectedInCategory = selectedFacets[catKey] || new Set();
+
+        // Build visible tags: top 5 by frequency + any selected tags not in top 5
+        const topTags = tags.slice(0, MAX_VISIBLE);
+        const overflowTags = tags.slice(MAX_VISIBLE);
+        const selectedOverflow = overflowTags.filter((t) => selectedInCategory.has(t));
+        const visibleTags = isExpanded
+          ? tags
+          : [...topTags, ...selectedOverflow.filter((t) => !topTags.includes(t))];
+
+        const hasMore = tags.length > MAX_VISIBLE;
+
+        return (
+          <div key={catKey} className="flex items-start gap-2">
+            <span className="text-[11px] font-semibold text-muted-foreground w-24 shrink-0 tracking-widest uppercase flex items-center gap-1.5 pt-1">
+              <Icon className="w-3.5 h-3.5" />
+              {meta?.label || catKey}
+            </span>
+            <div className={`flex items-center gap-1.5 ${isExpanded ? "flex-wrap" : "overflow-x-auto scrollbar-hide"} pb-0.5`}>
+              {visibleTags.map((tag) => {
+                const isSelected = selectedInCategory.has(tag);
+                const count = tagFrequency[tag] || 0;
+                return (
+                  <Badge
+                    key={tag}
+                    variant={isSelected ? "default" : "outline"}
+                    className={`cursor-pointer text-xs whitespace-nowrap transition-all ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground border-primary hover:bg-primary/80"
+                        : "bg-transparent border-border hover:bg-accent/40"
+                    }`}
+                    onClick={() => onToggleFacet(catKey, tag)}
+                  >
+                    {tag}
+                    <span className={`ml-1 text-[10px] ${isSelected ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                      {count}
+                    </span>
+                  </Badge>
+                );
+              })}
+              {hasMore && (
+                <button
+                  onClick={() => toggleExpand(catKey)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap px-1.5 py-0.5 rounded-full border border-dashed border-border hover:border-foreground/30"
                 >
-                  {tag}
-                </Badge>
-              );
-            })}
+                  {isExpanded ? "− Less" : `+ ${overflowTags.length} more`}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
