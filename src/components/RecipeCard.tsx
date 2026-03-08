@@ -1,4 +1,4 @@
-import { Clock, Users, ChefHat, Bookmark, CalendarPlus } from "lucide-react";
+import { Clock, Users, ChefHat, Bookmark, CalendarPlus, Flame } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { isRecipeToTry } from "@/components/FacetedFilters";
