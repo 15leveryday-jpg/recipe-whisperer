@@ -3,14 +3,31 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { isRecipeToTry } from "@/components/FacetedFilters";
 import type { Recipe } from "@/types/recipe";
+import type { MatchedIngredient } from "@/hooks/useRecipes";
 
 interface RecipeCardProps {
   recipe: Recipe;
   matchPercentage?: number;
-  matchedIngredients?: string[];
+  matchedIngredients?: MatchedIngredient[];
   onClick: () => void;
   onAddToWeek?: (recipe: Recipe) => void;
   isInWeek?: boolean;
+}
+
+/** Format a matched ingredient with its quantity for display */
+function formatMatchedIng(ing: MatchedIngredient): string {
+  const parts: string[] = [];
+  if (ing.amount) parts.push(ing.amount);
+  if (ing.unit) parts.push(ing.unit);
+  parts.push(ing.name);
+  return parts.join(" ");
+}
+
+/** Get a significance label for visual distinction */
+function significanceStyle(sig: number): string {
+  if (sig >= 6) return "bg-primary/20 text-primary border border-primary/30 font-semibold";
+  if (sig >= 3) return "bg-primary/10 text-primary font-medium";
+  return "bg-muted text-muted-foreground";
 }
 
 const RecipeCard = ({ recipe, matchPercentage, matchedIngredients, onClick, onAddToWeek, isInWeek }: RecipeCardProps) => {
@@ -81,14 +98,20 @@ const RecipeCard = ({ recipe, matchPercentage, matchedIngredients, onClick, onAd
           </div>
         )}
 
-        {/* Matched ingredients highlight */}
+        {/* Matched ingredients with quantity highlight */}
         {matchedIngredients && matchedIngredients.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {matchedIngredients.slice(0, 4).map((ing) => (
-              <span key={ing} className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                {ing}
-              </span>
-            ))}
+            {matchedIngredients
+              .sort((a, b) => b.significance - a.significance)
+              .slice(0, 4)
+              .map((ing, i) => (
+                <span
+                  key={`${ing.name}-${i}`}
+                  className={`text-[11px] px-2 py-0.5 rounded-full ${significanceStyle(ing.significance)}`}
+                >
+                  {formatMatchedIng(ing)}
+                </span>
+              ))}
             {matchedIngredients.length > 4 && (
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
                 +{matchedIngredients.length - 4}
