@@ -41,14 +41,14 @@ const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }:
         {onAddToWeek && (
           <button
             onClick={(e) => { e.stopPropagation(); onAddToWeek(recipe); }}
-            className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-elevated ${
+            className={`absolute top-2 right-2 min-w-[44px] min-h-[44px] w-11 h-11 sm:w-8 sm:h-8 sm:min-w-0 sm:min-h-0 rounded-full flex items-center justify-center transition-all shadow-elevated ${
               isInWeek
                 ? "bg-primary text-primary-foreground"
                 : "bg-card/90 text-foreground hover:bg-primary hover:text-primary-foreground"
             }`}
             title={isInWeek ? "In your week" : "Add to Week"}
           >
-            <CalendarPlus className="w-4 h-4" />
+            <CalendarPlus className="w-5 h-5 sm:w-4 sm:h-4" />
           </button>
         )}
       </div>
