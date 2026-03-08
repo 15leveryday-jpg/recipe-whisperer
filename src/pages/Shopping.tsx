@@ -80,34 +80,6 @@ export default function Shopping() {
   if (!user) return <AuthForm />;
 
   const handleAddItem = async () => {
-    if (!activeStoreFilter) return items;
-    return items.filter(
-      (i) => i.store_ids.length === 0 || i.store_ids.includes(activeStoreFilter)
-    );
-  }, [items, activeStoreFilter]);
-
-  const groupedItems = useMemo(() => {
-    const groups = new Map<string, GroceryItem[]>();
-    filteredItems.forEach((item) => {
-      const cat = item.category || "Other";
-      const arr = groups.get(cat) ?? [];
-      arr.push(item);
-      groups.set(cat, arr);
-    });
-    // Sort by category order
-    const sorted = new Map<string, GroceryItem[]>();
-    CATEGORY_ORDER.forEach((cat) => {
-      if (groups.has(cat)) {
-        sorted.set(cat, groups.get(cat)!);
-        groups.delete(cat);
-      }
-    });
-    // Any remaining custom categories
-    groups.forEach((val, key) => sorted.set(key, val));
-    return sorted;
-  }, [filteredItems]);
-
-  const handleAddItem = async () => {
     if (!newItemName.trim()) return;
     await addItem(newItemName, newItemQty, newItemCategory || undefined, newItemStores);
     setNewItemName("");
