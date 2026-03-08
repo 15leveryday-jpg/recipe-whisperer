@@ -32,6 +32,7 @@ export function useRecipes(userId: string | undefined) {
           reference_image_url: (r as any).reference_image_url ?? null,
           is_to_try: (r as any).is_to_try ?? false,
           notes: (r as any).notes ?? "",
+          cook_count: (r as any).cook_count ?? 0,
         }))
       );
     }
@@ -57,6 +58,7 @@ export function useRecipes(userId: string | undefined) {
           reference_image_url: r.reference_image_url ?? null,
           is_to_try: r.is_to_try ?? false,
           notes: r.notes ?? "",
+          cook_count: r.cook_count ?? 0,
         }))
       );
     } catch {

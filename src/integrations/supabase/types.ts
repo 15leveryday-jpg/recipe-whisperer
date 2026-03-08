@@ -14,8 +14,38 @@ export type Database = {
   }
   public: {
     Tables: {
+      recipe_logs: {
+        Row: {
+          cooked_at: string
+          id: string
+          recipe_id: string
+          user_id: string
+        }
+        Insert: {
+          cooked_at?: string
+          id?: string
+          recipe_id: string
+          user_id: string
+        }
+        Update: {
+          cooked_at?: string
+          id?: string
+          recipe_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_logs_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
+          cook_count: number
           cook_time_minutes: number | null
           created_at: string
           embedding: string | null
@@ -37,6 +67,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cook_count?: number
           cook_time_minutes?: number | null
           created_at?: string
           embedding?: string | null
@@ -58,6 +89,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cook_count?: number
           cook_time_minutes?: number | null
           created_at?: string
           embedding?: string | null

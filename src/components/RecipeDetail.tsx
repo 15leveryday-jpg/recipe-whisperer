@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon, Link as LinkIcon, Flame, History } from "lucide-react";
 import EditableIngredients from "@/components/EditableIngredients";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import ReactMarkdown from "react-markdown";
+import confetti from "canvas-confetti";
+import { format } from "date-fns";
 import type { Recipe, Ingredient } from "@/types/recipe";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -262,6 +264,9 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
   const [uploading, setUploading] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null);
+  const [localCookCount, setLocalCookCount] = useState(recipe.cook_count || 0);
+  const [cookLogs, setCookLogs] = useState<{ id: string; cooked_at: string }[]>([]);
+  const [cookingInProgress, setCookingInProgress] = useState(false);
 
   // Tag suggestion dropdown
   const [tagInputFocused, setTagInputFocused] = useState(false);
@@ -302,7 +307,64 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
     setEditNotes(recipe.notes || "");
     setEditImageUrl(recipe.image_url || "");
     setEditSourceUrl(recipe.source_url || "");
+    setLocalCookCount(recipe.cook_count || 0);
   }, [recipe]);
+
+  // Fetch cook logs
+  useEffect(() => {
+    const fetchLogs = async () => {
+      const { data } = await supabase
+        .from("recipe_logs")
+        .select("id, cooked_at")
+        .eq("recipe_id", recipe.id)
+        .order("cooked_at", { ascending: false });
+      setCookLogs((data as any) || []);
+    };
+    fetchLogs();
+  }, [recipe.id, localCookCount]);
+
+  const markAsCooked = async () => {
+    if (cookingInProgress) return;
+    setCookingInProgress(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      // Optimistic update
+      const newCount = localCookCount + 1;
+      setLocalCookCount(newCount);
+
+      // Insert log
+      const { error: logErr } = await supabase
+        .from("recipe_logs")
+        .insert({ recipe_id: recipe.id, user_id: user.id } as any);
+      if (logErr) throw logErr;
+
+      // Update cook_count
+      const { error: updateErr } = await supabase
+        .from("recipes")
+        .update({ cook_count: newCount } as any)
+        .eq("id", recipe.id);
+      if (updateErr) throw updateErr;
+
+      // Update parent state
+      onUpdate?.(recipe.id, { cook_count: newCount } as any);
+
+      // Confetti!
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.7 },
+        colors: ["hsl(142, 76%, 36%)", "hsl(45, 93%, 47%)", "hsl(0, 84%, 60%)"],
+      });
+      toast.success(`Cooked ${newCount} time${newCount > 1 ? "s" : ""}! 🎉`);
+    } catch {
+      setLocalCookCount((c) => c - 1);
+      toast.error("Failed to log cook");
+    } finally {
+      setCookingInProgress(false);
+    }
+  };
 
   const totalTime = recipe.total_time_minutes || ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
   const currentServings = recipe.servings ? Math.round(recipe.servings * servingsMultiplier) : null;
@@ -475,8 +537,8 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
           </div>
         )}
 
-        {/* Meta bar */}
-        <div className="px-6 pt-4 pb-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
+        {/* Meta bar + Mark as Cooked */}
+        <div className="px-6 pt-4 pb-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           {totalTime && (
             <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {totalTime} min</span>
           )}
@@ -485,6 +547,22 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
               <ExternalLink className="w-4 h-4" /> Source
             </a>
           )}
+          <div className="ml-auto flex items-center gap-2">
+            {localCookCount > 0 && (
+              <span className="flex items-center gap-1 text-xs font-medium text-primary">
+                <Flame className="w-4 h-4" /> {localCookCount}
+              </span>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={markAsCooked}
+              disabled={cookingInProgress}
+              className="gap-1.5 text-xs"
+            >
+              <ChefHat className="w-3.5 h-3.5" /> Mark as Cooked
+            </Button>
+          </div>
         </div>
 
         {/* Servings & unit controls */}
@@ -628,6 +706,23 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
             </div>
           </div>
         ) : null}
+
+        {/* Cook History */}
+        {cookLogs.length > 0 && !editing && (
+          <div className="px-6 pb-4">
+            <h3 className="font-display text-lg tracking-tight mb-2 text-foreground flex items-center gap-2">
+              <History className="w-4 h-4" /> Cook History
+            </h3>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {cookLogs.map((log, i) => (
+                <div key={log.id} className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+                  <span className="w-5 text-center font-medium text-foreground/60">#{cookLogs.length - i}</span>
+                  <span>{format(new Date(log.cooked_at), "MMM d, yyyy 'at' h:mm a")}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Delete button */}
         {onDelete && (
