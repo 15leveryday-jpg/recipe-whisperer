@@ -108,29 +108,8 @@ const RecipeCard = ({ recipe, matchPercentage, matchedIngredients, onClick, onAd
             )}
           </div>
 
-          {/* Matched ingredients — fixed height slot */}
-          <div className="h-7 overflow-hidden">
-            {matchedIngredients && matchedIngredients.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {matchedIngredients
-                  .sort((a, b) => b.significance - a.significance)
-                  .slice(0, 3)
-                  .map((ing, i) => (
-                    <span
-                      key={`${ing.name}-${i}`}
-                      className={`text-[11px] px-2 py-0.5 rounded-full ${significanceStyle(ing.significance)} truncate max-w-[140px]`}
-                    >
-                      {formatMatchedIng(ing)}
-                    </span>
-                  ))}
-                {matchedIngredients.length > 3 && (
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                    +{matchedIngredients.length - 3}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Matched ingredients — removed from card view for cleaner layout */}
+          <div className="h-7" />
         </div>
 
         {/* Spacer */}
