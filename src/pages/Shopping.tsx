@@ -43,6 +43,33 @@ export default function Shopping() {
   const [showNewStoreInput, setShowNewStoreInput] = useState(false);
   const [editingStoresItemId, setEditingStoresItemId] = useState<string | null>(null);
 
+  const filteredItems = useMemo(() => {
+    if (!activeStoreFilter) return items;
+    return items.filter(
+      (i) => i.store_ids.length === 0 || i.store_ids.includes(activeStoreFilter)
+    );
+  }, [items, activeStoreFilter]);
+
+  const groupedItems = useMemo(() => {
+    const groups = new Map<string, GroceryItem[]>();
+    items.forEach((item) => {
+      if (activeStoreFilter && item.store_ids.length > 0 && !item.store_ids.includes(activeStoreFilter)) return;
+      const cat = item.category || "Other";
+      const arr = groups.get(cat) ?? [];
+      arr.push(item);
+      groups.set(cat, arr);
+    });
+    const sorted = new Map<string, GroceryItem[]>();
+    CATEGORY_ORDER.forEach((cat) => {
+      if (groups.has(cat)) {
+        sorted.set(cat, groups.get(cat)!);
+        groups.delete(cat);
+      }
+    });
+    groups.forEach((val, key) => sorted.set(key, val));
+    return sorted;
+  }, [items, activeStoreFilter]);
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -52,7 +79,7 @@ export default function Shopping() {
   }
   if (!user) return <AuthForm />;
 
-  const filteredItems = useMemo(() => {
+  const handleAddItem = async () => {
     if (!activeStoreFilter) return items;
     return items.filter(
       (i) => i.store_ids.length === 0 || i.store_ids.includes(activeStoreFilter)
