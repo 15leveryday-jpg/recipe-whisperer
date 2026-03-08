@@ -159,7 +159,7 @@ const Index = () => {
       {showImport && (
         <ImportModal onClose={() => setShowImport(false)} onImported={fetchRecipes} />
       )}
-      <MealPlanDock meals={meals} onExpand={() => setDrawerOpen(true)} onRemove={removeMeal} />
+      <MealPlanDock meals={meals} onExpand={() => setDrawerOpen(true)} onRemove={removeMeal} onReorder={reorderMeals} />
       <MealPlanDrawer
         meals={meals}
         open={drawerOpen}
