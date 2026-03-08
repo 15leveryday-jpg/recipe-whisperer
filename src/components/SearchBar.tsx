@@ -31,7 +31,7 @@ const SearchBar = ({ onSearch, loading }: SearchBarProps) => {
           disabled={loading}
         />
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <span
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
             !isPantry
@@ -39,7 +39,7 @@ const SearchBar = ({ onSearch, loading }: SearchBarProps) => {
               : "bg-muted text-muted-foreground"
           }`}
         >
-          <Sparkles className="w-3 h-3" /> Vibe Search
+          <Sparkles className="w-3 h-3" /> <span className="hidden sm:inline">Vibe Search</span>
         </span>
         <span
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
@@ -48,9 +48,9 @@ const SearchBar = ({ onSearch, loading }: SearchBarProps) => {
               : "bg-muted text-muted-foreground"
           }`}
         >
-          <ShoppingBasket className="w-3 h-3" /> Pantry Match
+          <ShoppingBasket className="w-3 h-3" /> <span className="hidden sm:inline">Pantry Match</span>
         </span>
-        <span className="text-xs text-muted-foreground self-center ml-1">
+        <span className="hidden sm:inline text-xs text-muted-foreground self-center ml-1">
           {isPantry ? "Comma-separated → ingredient match" : "Natural language → semantic search"}
         </span>
       </div>
