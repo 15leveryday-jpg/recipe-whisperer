@@ -88,9 +88,16 @@ const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }:
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground">
-          Added {format(new Date(recipe.created_at), "MMM d, yyyy")}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Added {format(new Date(recipe.created_at), "MMM d, yyyy")}
+          </p>
+          {recipe.cook_count > 0 && (
+            <span className="flex items-center gap-1 text-xs font-medium text-primary">
+              <Flame className="w-3.5 h-3.5" /> {recipe.cook_count}
+            </span>
+          )}
+        </div>
       </div>
     </button>
   );
