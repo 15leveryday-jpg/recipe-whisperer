@@ -45,7 +45,7 @@ const RecipeCard = ({ recipe, matchPercentage, matchedIngredients, onClick, onAd
           <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
           <div className="w-full h-full bg-accent flex items-center justify-center">
-            <ChefHat className="w-12 h-12 text-muted-foreground/40" />
+            <img src="/placeholder.svg" alt="Recipe placeholder" className="w-16 h-16 opacity-30" />
           </div>
         )}
         {toTry && (
