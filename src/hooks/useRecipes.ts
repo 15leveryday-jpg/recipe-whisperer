@@ -259,12 +259,14 @@ export function useRecipes(userId: string | undefined) {
 
     const scored = base
       .map((recipe) => {
-        const { score, matchedIngredients } = scoreRecipe(recipe, terms);
-        if (score === 0) return null;
+        const { score, matchedIngredients, hardMatch, ingredientMatchRatio } = scoreRecipe(recipe, terms);
+        // Hard filter: only show recipes with title or ingredient match
+        if (!hardMatch) return null;
         return {
           ...recipe,
           matchScore: score,
           matchedIngredients,
+          matchPercentage: ingredientMatchRatio > 0 ? ingredientMatchRatio : undefined,
         } as WeightedRecipe;
       })
       .filter(Boolean) as WeightedRecipe[];
