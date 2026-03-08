@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Recipe } from "@/types/recipe";
 
-const MAX_MEALS = 5;
+const MAX_MEALS = 10;
 
 export function useMealPlan(userId: string | undefined) {
   const [meals, setMeals] = useState<Recipe[]>([]);

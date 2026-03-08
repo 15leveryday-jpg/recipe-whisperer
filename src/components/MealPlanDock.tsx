@@ -17,6 +17,8 @@ import { ChefHat, ChevronUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Recipe } from "@/types/recipe";
 
+const MAX_MEALS = 10;
+
 interface MealPlanDockProps {
   meals: Recipe[];
   onExpand: () => void;
@@ -50,9 +52,9 @@ function SortableThumbnail({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative group">
+    <div ref={setNodeRef} style={style} className="relative group flex-shrink-0">
       <button
-        className="w-14 h-14 rounded-lg overflow-hidden border border-border/50 hover:ring-2 hover:ring-primary transition-all cursor-grab active:cursor-grabbing touch-none"
+        className="w-12 h-12 rounded-lg overflow-hidden border border-border/50 hover:ring-2 hover:ring-primary transition-all cursor-grab active:cursor-grabbing touch-none"
         onClick={onExpand}
         {...attributes}
         {...listeners}
@@ -61,7 +63,7 @@ function SortableThumbnail({
           <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-accent flex items-center justify-center">
-            <ChefHat className="w-5 h-5 text-muted-foreground/50" />
+            <ChefHat className="w-4 h-4 text-muted-foreground/50" />
           </div>
         )}
       </button>
@@ -93,11 +95,11 @@ const MealPlanDock = ({ meals, onExpand, onRemove, onReorder }: MealPlanDockProp
 
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto w-full max-w-2xl mx-4 mb-4 bg-card border border-border rounded-2xl shadow-float p-3 animate-fade-in">
-        {/* Progress */}
-        <div className="flex items-center justify-between mb-2 px-1">
-          <span className="text-sm font-medium text-foreground">
-            {meals.length}/5 Recipes Selected
+      <div className="pointer-events-auto inline-flex flex-col mx-4 mb-4 bg-card border border-border rounded-2xl shadow-float p-3 animate-fade-in max-w-[calc(100vw-2rem)]">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2 px-1 gap-4">
+          <span className="text-sm font-medium text-foreground whitespace-nowrap">
+            {meals.length}/{MAX_MEALS}
           </span>
           <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={onExpand}>
             <ChevronUp className="w-4 h-4" /> View Plan
@@ -105,15 +107,15 @@ const MealPlanDock = ({ meals, onExpand, onRemove, onReorder }: MealPlanDockProp
         </div>
 
         {/* Progress bar */}
-        <div className="h-1.5 rounded-full bg-muted mb-3 overflow-hidden">
+        <div className="h-1 rounded-full bg-muted mb-3 overflow-hidden">
           <div
             className="h-full rounded-full bg-primary transition-all duration-300"
-            style={{ width: `${(meals.length / 5) * 100}%` }}
+            style={{ width: `${(meals.length / MAX_MEALS) * 100}%` }}
           />
         </div>
 
-        {/* Sortable Thumbnails */}
-        <div className="flex items-center gap-2">
+        {/* Sortable Thumbnails - scrollable */}
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={meals.map((m) => m.id)} strategy={horizontalListSortingStrategy}>
               {meals.map((recipe) => (
@@ -126,12 +128,6 @@ const MealPlanDock = ({ meals, onExpand, onRemove, onReorder }: MealPlanDockProp
               ))}
             </SortableContext>
           </DndContext>
-          {/* Empty slots */}
-          {Array.from({ length: 5 - meals.length }).map((_, i) => (
-            <div key={`empty-${i}`} className="w-14 h-14 rounded-lg border-2 border-dashed border-border/40 flex items-center justify-center">
-              <span className="text-muted-foreground/30 text-lg">+</span>
-            </div>
-          ))}
         </div>
       </div>
     </div>
