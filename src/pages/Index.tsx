@@ -107,7 +107,7 @@ const Index = () => {
           </div>
         ) : recipes.length === 0 ? (
           <div className="text-center py-20 space-y-3">
-            <p className="font-display text-2xl text-foreground">
+            <p className="font-display text-xl sm:text-2xl text-foreground">
               {searchResults ? "No recipes match" : "Your vault is empty"}
             </p>
             <p className="text-muted-foreground">
