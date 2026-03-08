@@ -163,7 +163,7 @@ export default function Shopping() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
         {/* Store Filter Bar */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mb-1">
           <Button
             variant={activeStoreFilter === null ? "default" : "outline"}
             size="sm"
@@ -199,7 +199,7 @@ export default function Shopping() {
               <Plus className="w-3.5 h-3.5 mr-1" /> Store
             </Button>
           ) : (
-            <div className="flex gap-1 shrink-0">
+            <div className="flex gap-1.5 shrink-0 items-center py-0.5">
               <Input
                 value={newStoreName}
                 onChange={(e) => setNewStoreName(e.target.value)}
