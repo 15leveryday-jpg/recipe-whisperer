@@ -152,17 +152,17 @@ const FacetedFilters = ({
   categoryMeta["other"] = { label: "Other", icon: MoreHorizontal };
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       {/* Status row */}
       <div className="flex items-center gap-2">
-        <span className="text-[11px] font-semibold text-muted-foreground w-24 shrink-0 tracking-widest uppercase flex items-center gap-1.5">
+        <span className="text-[11px] font-semibold text-muted-foreground w-16 sm:w-24 shrink-0 tracking-widest uppercase flex items-center gap-1.5">
           <Bookmark className="w-3.5 h-3.5" />
-          Status
+          <span className="hidden sm:inline">Status</span>
         </span>
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
           <Badge
             variant={toTryActive ? "default" : "outline"}
-            className={`cursor-pointer text-xs whitespace-nowrap transition-all ${
+            className={`cursor-pointer text-xs whitespace-nowrap transition-all min-h-[36px] sm:min-h-0 ${
               toTryActive
                 ? "bg-primary text-primary-foreground border-primary hover:bg-primary/80"
                 : toTryCount === 0
@@ -179,7 +179,7 @@ const FacetedFilters = ({
             variant="ghost"
             size="sm"
             onClick={onClearAll}
-            className="ml-auto text-xs text-muted-foreground hover:text-foreground shrink-0 h-7 px-2"
+            className="ml-auto text-xs text-muted-foreground hover:text-foreground shrink-0 h-7 px-2 min-h-[44px] sm:min-h-0"
           >
             <X className="w-3 h-3 mr-1" /> Clear
           </Button>
@@ -205,9 +205,9 @@ const FacetedFilters = ({
 
         return (
           <div key={catKey} className="flex items-start gap-2">
-            <span className="text-[11px] font-semibold text-muted-foreground w-24 shrink-0 tracking-widest uppercase flex items-center gap-1.5 pt-1">
+            <span className="text-[11px] font-semibold text-muted-foreground w-16 sm:w-24 shrink-0 tracking-widest uppercase flex items-center gap-1.5 pt-1">
               <Icon className="w-3.5 h-3.5" />
-              {meta?.label || catKey}
+              <span className="hidden sm:inline">{meta?.label || catKey}</span>
             </span>
             <div className={`flex items-center gap-1.5 ${isExpanded ? "flex-wrap" : "overflow-x-auto scrollbar-hide"} pb-0.5`}>
               {visibleTags.map((tag) => {

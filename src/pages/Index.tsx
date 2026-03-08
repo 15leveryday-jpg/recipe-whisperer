@@ -56,30 +56,30 @@ const Index = () => {
   if (!user) return <AuthForm />;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="font-display text-2xl tracking-tight text-foreground">Recipe Vault</h1>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="relative" onClick={() => navigate("/shopping")}>
-              <ShoppingBag className="w-4 h-4" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
+          <h1 className="font-display text-xl sm:text-2xl md:text-3xl tracking-tight text-foreground">Recipe Vault</h1>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button variant="ghost" size="icon" className="relative min-h-[44px] min-w-[44px]" onClick={() => navigate("/shopping")}>
+              <ShoppingBag className="w-5 h-5" />
               {unboughtCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                   {unboughtCount > 99 ? "99+" : unboughtCount}
                 </span>
               )}
             </Button>
-            <Button onClick={() => setShowImport(true)} className="gap-2">
-              <Plus className="w-4 h-4" /> Import
+            <Button onClick={() => setShowImport(true)} className="gap-1.5 sm:gap-2 min-h-[44px]">
+              <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Import</span><span className="sm:hidden">Add</span>
             </Button>
-            <Button variant="ghost" size="icon" onClick={signOut}>
+            <Button variant="ghost" size="icon" onClick={signOut} className="min-h-[44px] min-w-[44px]">
               <LogOut className="w-4 h-4" />
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4">
         <SearchBar onSearch={hybridSearch} loading={searchLoading} />
 
         {/* Faceted Filters */}
@@ -107,7 +107,7 @@ const Index = () => {
           </div>
         ) : recipes.length === 0 ? (
           <div className="text-center py-20 space-y-3">
-            <p className="font-display text-2xl text-foreground">
+            <p className="font-display text-xl sm:text-2xl text-foreground">
               {searchResults ? "No recipes match" : "Your vault is empty"}
             </p>
             <p className="text-muted-foreground">
@@ -120,7 +120,7 @@ const Index = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {recipes.map((recipe) => (
               <RecipeCard
                 key={recipe.id}
