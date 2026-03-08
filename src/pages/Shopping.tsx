@@ -131,37 +131,37 @@ export default function Shopping() {
   const boughtCount = filteredItems.filter((i) => i.is_bought).length;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border">
-        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="min-h-[44px] min-w-[44px]">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="font-display text-2xl tracking-tight text-foreground">Shopping List</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="font-display text-xl sm:text-2xl tracking-tight text-foreground">Shopping List</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {unboughtCount} item{unboughtCount !== 1 ? "s" : ""} remaining
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {meals.length > 0 && (
-              <Button variant="outline" size="sm" onClick={handleGenerateFromMealPlan} className="gap-1.5">
-                <ShoppingCart className="w-3.5 h-3.5" /> From Meal Plan
+              <Button variant="outline" size="sm" onClick={handleGenerateFromMealPlan} className="gap-1.5 min-h-[44px]">
+                <ShoppingCart className="w-3.5 h-3.5" /> <span className="hidden sm:inline">From Meal Plan</span><span className="sm:hidden">Plan</span>
               </Button>
             )}
             {boughtCount > 0 && (
-              <Button variant="ghost" size="sm" className="text-destructive" onClick={clearBought}>
-                <Trash2 className="w-3.5 h-3.5 mr-1" /> Clear Bought
+              <Button variant="ghost" size="sm" className="text-destructive min-h-[44px]" onClick={clearBought}>
+                <Trash2 className="w-3.5 h-3.5 sm:mr-1" /> <span className="hidden sm:inline">Clear Bought</span>
               </Button>
             )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
         {/* Store Filter Bar */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <Button

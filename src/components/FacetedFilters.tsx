@@ -205,9 +205,9 @@ const FacetedFilters = ({
 
         return (
           <div key={catKey} className="flex items-start gap-2">
-            <span className="text-[11px] font-semibold text-muted-foreground w-24 shrink-0 tracking-widest uppercase flex items-center gap-1.5 pt-1">
+            <span className="text-[11px] font-semibold text-muted-foreground w-16 sm:w-24 shrink-0 tracking-widest uppercase flex items-center gap-1.5 pt-1">
               <Icon className="w-3.5 h-3.5" />
-              {meta?.label || catKey}
+              <span className="hidden sm:inline">{meta?.label || catKey}</span>
             </span>
             <div className={`flex items-center gap-1.5 ${isExpanded ? "flex-wrap" : "overflow-x-auto scrollbar-hide"} pb-0.5`}>
               {visibleTags.map((tag) => {
