@@ -99,10 +99,8 @@ const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe 
             </div>
           ) : (
             meals.map((recipe) => {
-              const coreIngredients = recipe.ingredients
-                .filter((ing) => !ing.is_header)
-                .flatMap((ing) => extractCoreNouns(ing.name));
-              const uniqueNouns = [...new Set(coreIngredients)];
+              const ingredientCount = recipe.ingredients.filter((ing) => !ing.is_header).length;
+              const totalTime = recipe.total_time_minutes;
 
               return (
                 <div
@@ -131,25 +129,22 @@ const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe 
                           {recipe.title}
                         </h3>
                       </button>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenRecipe(recipe)}>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onRemove(recipe.id)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={() => onRemove(recipe.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
 
-                    {/* Core ingredient nouns */}
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {uniqueNouns.slice(0, 12).map((noun) => (
-                        <Badge key={noun} variant="secondary" className="text-xs font-normal">
-                          {noun}
-                        </Badge>
-                      ))}
-                      {uniqueNouns.length > 12 && (
-                        <span className="text-xs text-muted-foreground self-center">+{uniqueNouns.length - 12} more</span>
+                    {/* Metadata */}
+                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <List className="w-3.5 h-3.5" />
+                        {ingredientCount} Ingredient{ingredientCount !== 1 ? "s" : ""}
+                      </span>
+                      {totalTime && (
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          {totalTime}m
+                        </span>
                       )}
                     </div>
                   </div>
