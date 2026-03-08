@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, LogOut, X, Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useMealPlan } from "@/hooks/useMealPlan";
@@ -44,6 +45,18 @@ const Index = () => {
 
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showImport, setShowImport] = useState(false);
+  const backfillRan = useRef(false);
+
+  // Auto-backfill embeddings for existing recipes on first load
+  useEffect(() => {
+    if (!user || backfillRan.current) return;
+    backfillRan.current = true;
+    supabase.functions.invoke("backfill-embeddings").then(({ data }) => {
+      if (data?.processed > 0) {
+        console.log(`Backfilled embeddings for ${data.processed} recipes`);
+      }
+    }).catch(() => {/* silent */});
+  }, [user]);
 
   if (authLoading) {
     return (
