@@ -127,20 +127,22 @@ const MealPlanDock = ({ meals, onExpand, onRemove, onReorder }: MealPlanDockProp
         </div>
 
         {/* Sortable Thumbnails - scrollable */}
-        <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={meals.map((m) => m.id)} strategy={horizontalListSortingStrategy}>
-              {meals.map((recipe) => (
-                <SortableThumbnail
-                  key={recipe.id}
-                  recipe={recipe}
-                  onExpand={onExpand}
-                  onRemove={onRemove}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </div>
+        <TooltipProvider delayDuration={200}>
+          <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={meals.map((m) => m.id)} strategy={horizontalListSortingStrategy}>
+                {meals.map((recipe) => (
+                  <SortableThumbnail
+                    key={recipe.id}
+                    recipe={recipe}
+                    onExpand={onExpand}
+                    onRemove={onRemove}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          </div>
+        </TooltipProvider>
       </div>
     </div>
   );
