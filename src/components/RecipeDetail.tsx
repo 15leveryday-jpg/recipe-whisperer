@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import { X, Clock, Users, ExternalLink, ChefHat, Plus, Minus, ArrowLeftRight, Edit2, Save, Trash2, Image as ImageIcon, Link as LinkIcon, Flame, History } from "lucide-react";
 import EditableIngredients from "@/components/EditableIngredients";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import ReactMarkdown from "react-markdown";
+import confetti from "canvas-confetti";
+import { format } from "date-fns";
 import type { Recipe, Ingredient } from "@/types/recipe";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
