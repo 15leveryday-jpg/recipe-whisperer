@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, ChefHat, Trash2, ExternalLink, ShoppingBag } from "lucide-react";
+import { X, ChefHat, Trash2, ShoppingBag, Clock, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import type { Recipe } from "@/types/recipe";
 
 const STOP_WORDS = new Set([
