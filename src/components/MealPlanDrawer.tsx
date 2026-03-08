@@ -1,26 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, ChefHat, Trash2, ExternalLink, ShoppingBag } from "lucide-react";
+import { X, ChefHat, Trash2, ShoppingBag, Clock, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import type { Recipe } from "@/types/recipe";
-
-const STOP_WORDS = new Set([
-  "the", "and", "with", "of", "a", "an", "or", "to", "for", "in", "on",
-  "fresh", "large", "small", "medium", "finely", "thinly", "roughly",
-  "chopped", "diced", "minced", "sliced", "grated", "optional", "dried",
-  "ground", "whole", "about", "each", "cup", "cups", "tablespoon",
-  "tablespoons", "teaspoon", "teaspoons", "ounce", "ounces", "pound",
-  "pounds", "can", "jar", "package", "pinch", "dash",
-]);
-
-function extractCoreNouns(name: string): string[] {
-  return name
-    .replace(/[,()]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 2 && !STOP_WORDS.has(w.toLowerCase()))
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-}
 
 interface MealPlanDrawerProps {
   meals: Recipe[];
@@ -100,10 +82,8 @@ const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe 
             </div>
           ) : (
             meals.map((recipe) => {
-              const coreIngredients = recipe.ingredients
-                .filter((ing) => !ing.is_header)
-                .flatMap((ing) => extractCoreNouns(ing.name));
-              const uniqueNouns = [...new Set(coreIngredients)];
+              const ingredientCount = recipe.ingredients.filter((ing) => !ing.is_header).length;
+              const totalTime = recipe.total_time_minutes;
 
               return (
                 <div
@@ -132,25 +112,22 @@ const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe 
                           {recipe.title}
                         </h3>
                       </button>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenRecipe(recipe)}>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onRemove(recipe.id)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={() => onRemove(recipe.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
                     </div>
 
-                    {/* Core ingredient nouns */}
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {uniqueNouns.slice(0, 12).map((noun) => (
-                        <Badge key={noun} variant="secondary" className="text-xs font-normal">
-                          {noun}
-                        </Badge>
-                      ))}
-                      {uniqueNouns.length > 12 && (
-                        <span className="text-xs text-muted-foreground self-center">+{uniqueNouns.length - 12} more</span>
+                    {/* Metadata */}
+                    <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <List className="w-3.5 h-3.5" />
+                        {ingredientCount} Ingredient{ingredientCount !== 1 ? "s" : ""}
+                      </span>
+                      {totalTime && (
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          {totalTime}m
+                        </span>
                       )}
                     </div>
                   </div>
