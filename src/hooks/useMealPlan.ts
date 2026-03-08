@@ -10,7 +10,6 @@ export function useMealPlan(userId: string | undefined) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Fetch meal plan from DB on mount / user change
   useEffect(() => {
     if (!userId) {
       setMeals([]);
@@ -21,8 +20,9 @@ export function useMealPlan(userId: string | undefined) {
       setLoading(true);
       const { data, error } = await supabase
         .from("meal_plans")
-        .select("recipe_id, recipes(*)")
-        .eq("user_id", userId);
+        .select("recipe_id, position, recipes(*)")
+        .eq("user_id", userId)
+        .order("position");
 
       if (error) {
         console.error("Failed to fetch meal plan:", error);
@@ -49,7 +49,6 @@ export function useMealPlan(userId: string | undefined) {
     async (recipe: Recipe) => {
       if (!userId) return;
 
-      // Optimistic checks
       if (meals.some((r) => r.id === recipe.id)) {
         toast.info("Already in your week!");
         return;
@@ -61,16 +60,15 @@ export function useMealPlan(userId: string | undefined) {
         return;
       }
 
-      // Optimistic update
+      const newPosition = meals.length;
       setMeals((prev) => [...prev, recipe]);
       toast.success(`Added "${recipe.title}"`);
 
       const { error } = await supabase
         .from("meal_plans")
-        .insert({ user_id: userId, recipe_id: recipe.id });
+        .insert({ user_id: userId, recipe_id: recipe.id, position: newPosition });
 
       if (error) {
-        // Rollback
         setMeals((prev) => prev.filter((r) => r.id !== recipe.id));
         toast.error("Failed to save to meal plan");
         console.error(error);
@@ -93,10 +91,34 @@ export function useMealPlan(userId: string | undefined) {
         .eq("recipe_id", id);
 
       if (error) {
-        // Rollback
         if (removed) setMeals((prev) => [...prev, removed]);
         toast.error("Failed to remove from meal plan");
         console.error(error);
+      }
+    },
+    [userId, meals]
+  );
+
+  const reorderMeals = useCallback(
+    async (reordered: Recipe[]) => {
+      if (!userId) return;
+      const backup = [...meals];
+      setMeals(reordered);
+
+      // Update positions in DB
+      const updates = reordered.map((r, i) =>
+        supabase
+          .from("meal_plans")
+          .update({ position: i } as any)
+          .eq("user_id", userId)
+          .eq("recipe_id", r.id)
+      );
+
+      const results = await Promise.all(updates);
+      const failed = results.some((r) => r.error);
+      if (failed) {
+        setMeals(backup);
+        toast.error("Failed to reorder");
       }
     },
     [userId, meals]
@@ -125,6 +147,7 @@ export function useMealPlan(userId: string | undefined) {
     loading,
     addMeal,
     removeMeal,
+    reorderMeals,
     clearMeals,
     drawerOpen,
     setDrawerOpen,
