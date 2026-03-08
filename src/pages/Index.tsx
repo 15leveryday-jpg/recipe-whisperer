@@ -38,7 +38,7 @@ const Index = () => {
     deleteRecipe,
   } = useRecipes(user?.id);
 
-  const { meals, addMeal, removeMeal, clearMeals, drawerOpen, setDrawerOpen } = useMealPlan(user?.id);
+  const { meals, addMeal, removeMeal, reorderMeals, clearMeals, drawerOpen, setDrawerOpen } = useMealPlan(user?.id);
   const { unboughtCount } = useGroceryList(user?.id);
   const mealIds = new Set(meals.map((m) => m.id));
 
