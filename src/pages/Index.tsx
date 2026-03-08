@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, LogOut, X, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, LogOut, X, Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecipes } from "@/hooks/useRecipes";
