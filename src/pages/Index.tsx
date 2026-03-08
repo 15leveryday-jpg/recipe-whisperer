@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useMealPlan } from "@/hooks/useMealPlan";
+import { useGroceryList } from "@/hooks/useGroceryList";
 import AuthForm from "@/components/AuthForm";
 import RecipeCard from "@/components/RecipeCard";
 import RecipeDetail from "@/components/RecipeDetail";
