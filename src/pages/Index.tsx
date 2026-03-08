@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { Plus, LogOut, X, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, LogOut, X, Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useMealPlan } from "@/hooks/useMealPlan";
+import { useGroceryList } from "@/hooks/useGroceryList";
 import AuthForm from "@/components/AuthForm";
 import RecipeCard from "@/components/RecipeCard";
 import RecipeDetail from "@/components/RecipeDetail";
@@ -16,6 +18,7 @@ import type { Recipe } from "@/types/recipe";
 
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
   const {
     recipes,
     allRecipes,
@@ -36,6 +39,7 @@ const Index = () => {
   } = useRecipes(user?.id);
 
   const { meals, addMeal, removeMeal, clearMeals, drawerOpen, setDrawerOpen } = useMealPlan(user?.id);
+  const { unboughtCount } = useGroceryList(user?.id);
   const mealIds = new Set(meals.map((m) => m.id));
 
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
@@ -56,7 +60,15 @@ const Index = () => {
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="font-display text-2xl tracking-tight text-foreground">Recipe Vault</h1>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="relative" onClick={() => navigate("/shopping")}>
+              <ShoppingBag className="w-4 h-4" />
+              {unboughtCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4.5 h-4.5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unboughtCount > 99 ? "99+" : unboughtCount}
+                </span>
+              )}
+            </Button>
             <Button onClick={() => setShowImport(true)} className="gap-2">
               <Plus className="w-4 h-4" /> Import
             </Button>

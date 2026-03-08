@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { X, ChefHat, Trash2, ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { X, ChefHat, Trash2, ExternalLink, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Recipe } from "@/types/recipe";
@@ -31,6 +32,7 @@ interface MealPlanDrawerProps {
 }
 
 const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe }: MealPlanDrawerProps) => {
+  const navigate = useNavigate();
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -60,6 +62,14 @@ const MealPlanDrawer = ({ meals, open, onClose, onRemove, onClear, onOpenRecipe 
             <p className="text-sm text-muted-foreground mt-0.5">{meals.length}/5 recipes selected</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => { onClose(); navigate("/shopping"); }}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" /> Shopping List
+            </Button>
             {meals.length > 0 && (
               <Button variant="ghost" size="sm" className="text-destructive" onClick={onClear}>
                 Clear All

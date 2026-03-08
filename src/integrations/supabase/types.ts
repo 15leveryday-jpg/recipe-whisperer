@@ -14,6 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
+      grocery_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          is_bought: boolean
+          name: string
+          quantity: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_bought?: boolean
+          name: string
+          quantity?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          is_bought?: boolean
+          name?: string
+          quantity?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      item_store_availability: {
+        Row: {
+          id: string
+          item_id: string
+          store_id: string
+        }
+        Insert: {
+          id?: string
+          item_id: string
+          store_id: string
+        }
+        Update: {
+          id?: string
+          item_id?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_store_availability_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "grocery_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "item_store_availability_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_plans: {
         Row: {
           created_at: string
@@ -137,6 +200,30 @@ export type Database = {
           title?: string
           total_time_minutes?: number | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      stores: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
           user_id?: string
         }
         Relationships: []
