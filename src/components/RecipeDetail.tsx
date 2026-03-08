@@ -537,8 +537,8 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
           </div>
         )}
 
-        {/* Meta bar */}
-        <div className="px-6 pt-4 pb-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
+        {/* Meta bar + Mark as Cooked */}
+        <div className="px-6 pt-4 pb-2 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
           {totalTime && (
             <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {totalTime} min</span>
           )}
@@ -547,6 +547,22 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
               <ExternalLink className="w-4 h-4" /> Source
             </a>
           )}
+          <div className="ml-auto flex items-center gap-2">
+            {localCookCount > 0 && (
+              <span className="flex items-center gap-1 text-xs font-medium text-primary">
+                <Flame className="w-4 h-4" /> {localCookCount}
+              </span>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={markAsCooked}
+              disabled={cookingInProgress}
+              className="gap-1.5 text-xs"
+            >
+              <ChefHat className="w-3.5 h-3.5" /> Mark as Cooked
+            </Button>
+          </div>
         </div>
 
         {/* Servings & unit controls */}
