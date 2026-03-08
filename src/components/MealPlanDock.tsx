@@ -15,6 +15,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ChefHat, ChevronUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Recipe } from "@/types/recipe";
 
 const MAX_MEALS = 10;
@@ -52,28 +53,39 @@ function SortableThumbnail({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="relative group flex-shrink-0">
-      <button
-        className="w-12 h-12 rounded-lg overflow-hidden border border-border/50 hover:ring-2 hover:ring-primary transition-all cursor-grab active:cursor-grabbing touch-none"
-        onClick={onExpand}
-        {...attributes}
-        {...listeners}
+    <Tooltip delayDuration={200}>
+      <TooltipTrigger asChild>
+        <div ref={setNodeRef} style={style} className="relative group flex-shrink-0">
+          <button
+            className="w-12 h-12 rounded-lg overflow-hidden border border-border/50 hover:ring-2 hover:ring-primary transition-all cursor-grab active:cursor-grabbing touch-none"
+            onClick={onExpand}
+            {...attributes}
+            {...listeners}
+          >
+            {recipe.image_url ? (
+              <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-accent flex items-center justify-center">
+                <ChefHat className="w-4 h-4 text-muted-foreground/50" />
+              </div>
+            )}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onRemove(recipe.id); }}
+            className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        sideOffset={8}
+        className="bg-[hsl(30,10%,12%)] text-white border-none pointer-events-none animate-scale-in max-w-[200px] text-center"
       >
-        {recipe.image_url ? (
-          <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-accent flex items-center justify-center">
-            <ChefHat className="w-4 h-4 text-muted-foreground/50" />
-          </div>
-        )}
-      </button>
-      <button
-        onClick={(e) => { e.stopPropagation(); onRemove(recipe.id); }}
-        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-      >
-        <Trash2 className="w-3 h-3" />
-      </button>
-    </div>
+        {recipe.title}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -115,20 +127,22 @@ const MealPlanDock = ({ meals, onExpand, onRemove, onReorder }: MealPlanDockProp
         </div>
 
         {/* Sortable Thumbnails - scrollable */}
-        <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={meals.map((m) => m.id)} strategy={horizontalListSortingStrategy}>
-              {meals.map((recipe) => (
-                <SortableThumbnail
-                  key={recipe.id}
-                  recipe={recipe}
-                  onExpand={onExpand}
-                  onRemove={onRemove}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </div>
+        <TooltipProvider delayDuration={200}>
+          <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={meals.map((m) => m.id)} strategy={horizontalListSortingStrategy}>
+                {meals.map((recipe) => (
+                  <SortableThumbnail
+                    key={recipe.id}
+                    recipe={recipe}
+                    onExpand={onExpand}
+                    onRemove={onRemove}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          </div>
+        </TooltipProvider>
       </div>
     </div>
   );
