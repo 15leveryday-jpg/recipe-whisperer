@@ -18,6 +18,7 @@ import type { Recipe } from "@/types/recipe";
 
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
+  const navigate = useNavigate();
   const {
     recipes,
     allRecipes,
@@ -38,6 +39,7 @@ const Index = () => {
   } = useRecipes(user?.id);
 
   const { meals, addMeal, removeMeal, clearMeals, drawerOpen, setDrawerOpen } = useMealPlan(user?.id);
+  const { unboughtCount } = useGroceryList(user?.id);
   const mealIds = new Set(meals.map((m) => m.id));
 
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
