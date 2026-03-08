@@ -131,12 +131,22 @@ const Index = () => {
         ) : recipes.length === 0 ? (
           <div className="text-center py-20 space-y-3">
             <p className="font-display text-xl sm:text-2xl text-foreground">
-              {searchResults || localSearchQuery ? "No recipes match" : "Your vault is empty"}
+              {searchResults || localSearchQuery ? "No recipes found" : "Your vault is empty"}
             </p>
             <p className="text-muted-foreground">
-              {searchResults || localSearchQuery ? "Try a different search or adjust filters." : "Import your first recipe to get started."}
+              {searchResults || localSearchQuery
+                ? "No recipes match your search in titles or ingredients."
+                : "Import your first recipe to get started."}
             </p>
-            {!searchResults && !localSearchQuery && (
+            {(searchResults || localSearchQuery) ? (
+              <Button
+                onClick={() => { handleClearSearch(); clearAllFacets(); }}
+                variant="outline"
+                className="mt-4 gap-2 min-h-[44px]"
+              >
+                <X className="w-4 h-4" /> Clear Search & Filters
+              </Button>
+            ) : (
               <Button onClick={() => setShowImport(true)} variant="outline" className="mt-4 gap-2">
                 <Plus className="w-4 h-4" /> Import Recipe
               </Button>

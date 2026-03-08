@@ -98,20 +98,25 @@ export interface WeightedRecipe extends Recipe {
 }
 
 /** Score a recipe against search terms with weighted hierarchy including quantity analysis */
-function scoreRecipe(recipe: Recipe, terms: string[]): { score: number; matchedIngredients: MatchedIngredient[] } {
-  if (terms.length === 0) return { score: 0, matchedIngredients: [] };
+function scoreRecipe(recipe: Recipe, terms: string[]): { score: number; matchedIngredients: MatchedIngredient[]; hardMatch: boolean; ingredientMatchRatio: number } {
+  if (terms.length === 0) return { score: 0, matchedIngredients: [], hardMatch: false, ingredientMatchRatio: 0 };
 
   let totalScore = 0;
   const matchedIngredients: MatchedIngredient[] = [];
   const ingredients = recipe.ingredients.filter((i) => !i.is_header);
-  const servings = recipe.servings || 4; // default assumption
+  const servings = recipe.servings || 4;
+
+  let hasHardMatch = false; // true if term found in title OR ingredients
+  let termsWithIngredientMatch = 0;
 
   for (const term of terms) {
     let termScore = 0;
+    let termHardMatch = false;
 
     // Tier 1: Title match (weight 20)
     if (fuzzyMatch(recipe.title, term)) {
       termScore += 20;
+      termHardMatch = true;
     }
 
     // Tier 2 & 3: Ingredient match with quantity weighting
@@ -119,22 +124,16 @@ function scoreRecipe(recipe: Recipe, terms: string[]): { score: number; matchedI
       const ing = ingredients[idx];
       if (!fuzzyMatch(ing.name || "", term)) continue;
 
+      termHardMatch = true;
+      termsWithIngredientMatch++;
       const qty = parseQuantity(ing.amount, ing.unit, ing.name || "");
-      // Normalize by servings: "1 onion" in 2-serving recipe = 0.5/serving
-      //                        "1 onion" in 12-serving recipe = 0.083/serving
       const perServing = qty.significance / servings;
-
-      // Position bonus: first 3 ingredients get a boost (they're typically primary)
       const positionMultiplier = idx < 3 ? 1.5 : 1;
-
-      // Primary ingredient (high significance or top-3 position with decent qty)
       const isPrimary = qty.significance >= 4 || (idx < 3 && qty.significance >= 2);
 
       if (isPrimary) {
-        // Tier 2: Primary ingredient (base 8, scaled by per-serving significance)
         termScore += 8 + Math.min(perServing * 4, 8) * positionMultiplier;
       } else {
-        // Tier 3: Minor/secondary ingredient (base 2)
         termScore += 2 + Math.min(perServing * 2, 3);
       }
 
@@ -144,38 +143,39 @@ function scoreRecipe(recipe: Recipe, terms: string[]): { score: number; matchedI
         unit: ing.unit,
         significance: qty.significance,
       });
-      break; // count once per term per recipe
+      break;
     }
 
-    // Tier 4: Instructions/tags match (weight 1-2)
-    if (termScore === 0 || termScore <= 2) {
-      if (fuzzyMatch(recipe.instructions || "", term)) {
-        termScore += 1;
-      }
-      if (recipe.nutritional_tags.some((t) => fuzzyMatch(t, term))) {
-        termScore += 2;
-      }
+    if (termHardMatch) hasHardMatch = true;
+
+    // Soft matches only add minor score (don't qualify as hard match)
+    if (fuzzyMatch(recipe.instructions || "", term)) {
+      termScore += 1;
+    }
+    if (recipe.nutritional_tags.some((t) => fuzzyMatch(t, term))) {
+      termScore += 2;
     }
 
     totalScore += termScore;
   }
 
-  // Bonus for matching ALL terms (pantry mode)
+  // Bonus for matching ALL terms
   if (terms.length > 1) {
-    const termsMatched = terms.filter((term) => {
-      return (
-        fuzzyMatch(recipe.title, term) ||
-        ingredients.some((i) => fuzzyMatch(i.name || "", term)) ||
-        fuzzyMatch(recipe.instructions || "", term) ||
-        recipe.nutritional_tags.some((t) => fuzzyMatch(t, term))
-      );
-    });
+    const termsMatched = terms.filter((term) =>
+      fuzzyMatch(recipe.title, term) || ingredients.some((i) => fuzzyMatch(i.name || "", term))
+    );
     if (termsMatched.length === terms.length) {
-      totalScore += 25; // big bonus for matching all
+      totalScore += 25;
     }
   }
 
-  return { score: totalScore, matchedIngredients };
+  // Ingredient match ratio: what % of recipe ingredients are covered by search terms
+  const totalIngCount = ingredients.length || 1;
+  const ingredientMatchRatio = terms.length > 1
+    ? Math.round((termsWithIngredientMatch / totalIngCount) * 100)
+    : 0;
+
+  return { score: totalScore, matchedIngredients, hardMatch: hasHardMatch, ingredientMatchRatio };
 }
 
 export function useRecipes(userId: string | undefined) {
@@ -259,12 +259,14 @@ export function useRecipes(userId: string | undefined) {
 
     const scored = base
       .map((recipe) => {
-        const { score, matchedIngredients } = scoreRecipe(recipe, terms);
-        if (score === 0) return null;
+        const { score, matchedIngredients, hardMatch, ingredientMatchRatio } = scoreRecipe(recipe, terms);
+        // Hard filter: only show recipes with title or ingredient match
+        if (!hardMatch) return null;
         return {
           ...recipe,
           matchScore: score,
           matchedIngredients,
+          matchPercentage: ingredientMatchRatio > 0 ? ingredientMatchRatio : undefined,
         } as WeightedRecipe;
       })
       .filter(Boolean) as WeightedRecipe[];
