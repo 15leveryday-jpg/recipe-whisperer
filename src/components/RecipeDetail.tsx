@@ -264,6 +264,9 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
   const [uploading, setUploading] = useState(false);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number>>(new Set());
   const [hoveredStepIndex, setHoveredStepIndex] = useState<number | null>(null);
+  const [localCookCount, setLocalCookCount] = useState(recipe.cook_count || 0);
+  const [cookLogs, setCookLogs] = useState<{ id: string; cooked_at: string }[]>([]);
+  const [cookingInProgress, setCookingInProgress] = useState(false);
 
   // Tag suggestion dropdown
   const [tagInputFocused, setTagInputFocused] = useState(false);
