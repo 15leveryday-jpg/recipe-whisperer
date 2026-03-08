@@ -12,7 +12,8 @@ const SYSTEM_PROMPT = `You are a recipe parser. Given raw messy text (from Googl
 
 You MUST call the extract_recipe function with the extracted data. Be thorough:
 - Extract ALL ingredients, even if buried in paragraphs. Include amount and unit when available.
-- Convert instructions into clear numbered steps in Markdown format (use 1. 2. 3. etc).
+- For instructions: ONLY extract text that is explicitly listed under an 'Instructions', 'Directions', 'Method', or 'Steps' section in the source material. Do NOT summarize, paraphrase, or add any external culinary advice, tips, or steps that are not present in the original text. Reproduce the original steps faithfully in numbered Markdown format (1. 2. 3. etc).
+- If the source material does not contain an explicit instructions/directions section, set instructions to the exact string "ERROR: No instructions found in source" and do NOT guess or fabricate steps.
 - Infer nutritional tags like: High Protein, Vegan, Vegetarian, Gluten-Free, Low Carb, Keto, Dairy-Free, Quick Meal.
 - Estimate prep_time_minutes, cook_time_minutes, total_time_minutes if mentioned or inferable.
 - Estimate servings if mentioned.`;
