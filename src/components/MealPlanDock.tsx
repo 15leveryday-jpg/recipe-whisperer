@@ -128,7 +128,7 @@ const MealPlanDock = ({ meals, onExpand, onRemove, onReorder }: MealPlanDockProp
 
         {/* Sortable Thumbnails - scrollable */}
         <TooltipProvider delayDuration={200}>
-          <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] pt-2 pr-2 -mt-2 -mr-2">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={meals.map((m) => m.id)} strategy={horizontalListSortingStrategy}>
                 {meals.map((recipe) => (
