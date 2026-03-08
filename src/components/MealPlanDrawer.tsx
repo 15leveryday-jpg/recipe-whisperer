@@ -3,23 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { X, ChefHat, Trash2, ShoppingBag, Clock, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Recipe } from "@/types/recipe";
-
-const STOP_WORDS = new Set([
-  "the", "and", "with", "of", "a", "an", "or", "to", "for", "in", "on",
-  "fresh", "large", "small", "medium", "finely", "thinly", "roughly",
-  "chopped", "diced", "minced", "sliced", "grated", "optional", "dried",
-  "ground", "whole", "about", "each", "cup", "cups", "tablespoon",
-  "tablespoons", "teaspoon", "teaspoons", "ounce", "ounces", "pound",
-  "pounds", "can", "jar", "package", "pinch", "dash",
-]);
-
-function extractCoreNouns(name: string): string[] {
-  return name
-    .replace(/[,()]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length >= 2 && !STOP_WORDS.has(w.toLowerCase()))
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-}
+import type { Recipe } from "@/types/recipe";
 
 interface MealPlanDrawerProps {
   meals: Recipe[];
