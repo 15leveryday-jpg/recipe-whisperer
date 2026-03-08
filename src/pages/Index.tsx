@@ -16,7 +16,7 @@ import FacetedFilters from "@/components/FacetedFilters";
 import MealPlanDock from "@/components/MealPlanDock";
 import MealPlanDrawer from "@/components/MealPlanDrawer";
 import type { Recipe } from "@/types/recipe";
-import type { WeightedRecipe } from "@/hooks/useRecipes";
+import type { WeightedRecipe, MatchedIngredient } from "@/hooks/useRecipes";
 
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
