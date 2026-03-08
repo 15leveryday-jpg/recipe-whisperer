@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { X, ChefHat, Trash2, ShoppingBag, Clock, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Recipe } from "@/types/recipe";
-import type { Recipe } from "@/types/recipe";
 
 interface MealPlanDrawerProps {
   meals: Recipe[];
