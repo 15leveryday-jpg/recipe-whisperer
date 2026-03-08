@@ -707,6 +707,23 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
           </div>
         ) : null}
 
+        {/* Cook History */}
+        {cookLogs.length > 0 && !editing && (
+          <div className="px-6 pb-4">
+            <h3 className="font-display text-lg tracking-tight mb-2 text-foreground flex items-center gap-2">
+              <History className="w-4 h-4" /> Cook History
+            </h3>
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {cookLogs.map((log, i) => (
+                <div key={log.id} className="flex items-center gap-2 text-sm text-muted-foreground py-1">
+                  <span className="w-5 text-center font-medium text-foreground/60">#{cookLogs.length - i}</span>
+                  <span>{format(new Date(log.cooked_at), "MMM d, yyyy 'at' h:mm a")}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Delete button */}
         {onDelete && (
           <div className="px-6 pb-6 pt-2">
