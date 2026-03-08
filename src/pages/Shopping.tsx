@@ -168,7 +168,7 @@ export default function Shopping() {
             variant={activeStoreFilter === null ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveStoreFilter(null)}
-            className="shrink-0"
+            className="shrink-0 min-h-[44px] sm:min-h-0"
           >
             All
           </Button>
