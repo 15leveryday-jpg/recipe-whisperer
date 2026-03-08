@@ -35,7 +35,7 @@ const Index = () => {
     deleteRecipe,
   } = useRecipes(user?.id);
 
-  const { meals, addMeal, removeMeal, clearMeals, drawerOpen, setDrawerOpen } = useMealPlan();
+  const { meals, addMeal, removeMeal, clearMeals, drawerOpen, setDrawerOpen } = useMealPlan(user?.id);
   const mealIds = new Set(meals.map((m) => m.id));
 
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
