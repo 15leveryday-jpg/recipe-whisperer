@@ -23,34 +23,36 @@ const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }:
   return (
     <button
       onClick={onClick}
-      className="group w-full text-left bg-card rounded-lg shadow-card hover:shadow-elevated transition-all duration-300 overflow-hidden border border-border/30 animate-fade-in flex flex-col"
+      className="group w-full text-left bg-card rounded-lg shadow-card hover:shadow-elevated transition-all duration-300 overflow-hidden border border-border/30 animate-fade-in flex flex-col relative"
     >
+      {/* Overlay icons — positioned on the card root so they're always top-right */}
+      {toTry && (
+        <span className="absolute top-1.5 left-1.5 z-20 bg-to-try text-to-try-foreground text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-elevated">
+          <Bookmark className="w-2.5 h-2.5" /> To Try
+        </span>
+      )}
+      {onAddToWeek && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onAddToWeek(recipe); }}
+          className={`absolute top-1.5 right-1.5 z-20 min-w-[36px] min-h-[36px] w-9 h-9 sm:w-7 sm:h-7 sm:min-w-0 sm:min-h-0 rounded-full flex items-center justify-center transition-all shadow-elevated ${
+            isInWeek
+              ? "bg-primary text-primary-foreground"
+              : "bg-card/90 text-foreground hover:bg-primary hover:text-primary-foreground"
+          }`}
+          title={isInWeek ? "In your week" : "Add to Week"}
+        >
+          <CalendarPlus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+        </button>
+      )}
+
       {/* Image — fixed square aspect ratio, always renders */}
-      <div className="relative aspect-square overflow-hidden flex-shrink-0 bg-accent">
+      <div className="aspect-square overflow-hidden flex-shrink-0 bg-accent">
         {recipe.image_url ? (
           <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <ChefHat className="w-10 h-10 text-muted-foreground/30" />
           </div>
-        )}
-        {toTry && (
-          <span className="absolute top-1.5 left-1.5 bg-to-try text-to-try-foreground text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 shadow-elevated z-10">
-            <Bookmark className="w-2.5 h-2.5" /> To Try
-          </span>
-        )}
-        {onAddToWeek && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onAddToWeek(recipe); }}
-            className={`absolute top-1.5 right-1.5 z-10 min-w-[36px] min-h-[36px] w-9 h-9 sm:w-7 sm:h-7 sm:min-w-0 sm:min-h-0 rounded-full flex items-center justify-center transition-all shadow-elevated ${
-              isInWeek
-                ? "bg-primary text-primary-foreground"
-                : "bg-card/90 text-foreground hover:bg-primary hover:text-primary-foreground"
-            }`}
-            title={isInWeek ? "In your week" : "Add to Week"}
-          >
-            <CalendarPlus className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-          </button>
         )}
       </div>
 
