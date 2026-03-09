@@ -36,7 +36,15 @@ export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite, onE
     } else if (offset > SWIPE_THRESHOLD) {
       onFavorite(item.id);
     }
+    setDidSwipe(Math.abs(offset) > 10);
     setSwiping(null);
+  };
+
+  const handleTap = () => {
+    if (!didSwipe && onEdit) {
+      onEdit(item);
+    }
+    setDidSwipe(false);
   };
 
   const handleDrag = (_: any, info: PanInfo) => {
