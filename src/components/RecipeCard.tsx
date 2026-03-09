@@ -17,6 +17,7 @@ interface RecipeCardProps {
 const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }: RecipeCardProps) => {
   const totalTime = recipe.total_time_minutes ||
     ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
+  const ingredientCount = recipe.ingredients.filter(i => !i.is_header).length;
 
   const toTry = isRecipeToTry(recipe);
 
