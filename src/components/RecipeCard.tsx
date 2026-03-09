@@ -1,4 +1,4 @@
-import { Clock, Users, ChefHat, Bookmark, CalendarPlus, Flame } from "lucide-react";
+import { Clock, Users, ChefHat, Bookmark, CalendarPlus, Flame, ListChecks } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { isRecipeToTry } from "@/components/FacetedFilters";
@@ -17,6 +17,7 @@ interface RecipeCardProps {
 const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }: RecipeCardProps) => {
   const totalTime = recipe.total_time_minutes ||
     ((recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0)) || null;
+  const ingredientCount = recipe.ingredients.filter(i => !i.is_header).length;
 
   const toTry = isRecipeToTry(recipe);
 
@@ -73,6 +74,11 @@ const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }:
           {recipe.servings && (
             <span className="flex items-center gap-1">
               <Users className="w-3 h-3" /> {recipe.servings}
+            </span>
+          )}
+          {ingredientCount > 0 && (
+            <span className="flex items-center gap-1">
+              <ListChecks className="w-3 h-3" /> {ingredientCount}
             </span>
           )}
         </div>
