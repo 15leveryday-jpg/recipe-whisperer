@@ -56,32 +56,30 @@ export function EditItemSheet({ item, stores, open, onOpenChange, onSave }: Prop
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[85vh]">
-        <SheetHeader>
+      <SheetContent side="bottom" className="rounded-t-2xl">
+        <SheetHeader className="pb-2">
           <SheetTitle className="font-display text-lg">Edit Item</SheetTitle>
         </SheetHeader>
-        <div className="space-y-4 mt-4 pb-4">
-          {/* Name */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="h-11" />
+        <div className="space-y-3 pb-3">
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} className="h-9" />
+            </div>
+            <div className="space-y-1 w-24">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Qty</label>
+              <Input value={qty} onChange={(e) => setQty(e.target.value)} placeholder="e.g. 2 lbs" className="h-9" />
+            </div>
           </div>
 
-          {/* Quantity */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quantity</label>
-            <Input value={qty} onChange={(e) => setQty(e.target.value)} placeholder="e.g. 2 lbs" className="h-11" />
-          </div>
-
-          {/* Category */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</label>
-            <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Category</label>
+            <div className="flex flex-wrap gap-1">
               {CATEGORY_ORDER.map((cat) => (
                 <Badge
                   key={cat}
                   variant={category === cat ? "default" : "outline"}
-                  className="cursor-pointer text-xs transition-colors"
+                  className="cursor-pointer text-[11px] transition-colors h-6"
                   onClick={() => setCategory(category === cat ? "" : cat)}
                 >
                   {cat}
@@ -90,44 +88,27 @@ export function EditItemSheet({ item, stores, open, onOpenChange, onSave }: Prop
             </div>
           </div>
 
-          {/* Stores */}
           {stores.length > 0 && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Stores</label>
-              <div className="space-y-1">
+            <div className="space-y-1">
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Stores</label>
+              <div className="flex flex-wrap gap-1.5">
                 {stores.map((store) => (
                   <label
                     key={store.id}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full cursor-pointer transition-colors text-xs border ${
+                      storeIds.includes(store.id) ? "bg-accent border-primary/30" : "border-border hover:bg-accent/50"
+                    }`}
+                    onClick={() => toggleStore(store.id)}
                   >
-                    <Checkbox
-                      checked={storeIds.includes(store.id)}
-                      onCheckedChange={() => toggleStore(store.id)}
-                    />
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: store.color }} />
-                    <span className="text-sm">{store.name}</span>
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: store.color }} />
+                    {store.name}
                   </label>
                 ))}
               </div>
-              {storeIds.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {storeIds.map((sid) => {
-                    const store = stores.find((s) => s.id === sid);
-                    if (!store) return null;
-                    return (
-                      <Badge key={sid} variant="secondary" className="text-[10px] gap-1 cursor-pointer h-5" onClick={() => toggleStore(sid)}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: store.color }} />
-                        {store.name}
-                        <X className="w-2.5 h-2.5" />
-                      </Badge>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           )}
 
-          <Button onClick={handleSave} disabled={!name.trim() || saving} className="w-full h-11">
+          <Button onClick={handleSave} disabled={!name.trim() || saving} className="w-full h-10 mt-1">
             {saving ? "Saving…" : "Save Changes"}
           </Button>
         </div>
