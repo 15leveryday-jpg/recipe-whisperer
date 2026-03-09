@@ -11,6 +11,7 @@ interface Props {
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
   onFavorite: (id: string) => void;
+  onEdit?: (item: GroceryItem) => void;
 }
 
 export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite }: Props) {
