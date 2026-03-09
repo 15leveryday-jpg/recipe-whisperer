@@ -13,6 +13,8 @@ export interface GroceryItem {
   quantity: string | null;
   category: string | null;
   is_bought: boolean;
+  is_favorite: boolean;
+  recipe_source: string | null;
   created_at: string;
   store_ids: string[]; // derived from item_store_availability
 }

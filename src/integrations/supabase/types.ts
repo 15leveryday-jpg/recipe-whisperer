@@ -20,8 +20,10 @@ export type Database = {
           created_at: string
           id: string
           is_bought: boolean
+          is_favorite: boolean
           name: string
           quantity: string | null
+          recipe_source: string | null
           user_id: string
         }
         Insert: {
@@ -29,8 +31,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_bought?: boolean
+          is_favorite?: boolean
           name: string
           quantity?: string | null
+          recipe_source?: string | null
           user_id: string
         }
         Update: {
@@ -38,8 +42,10 @@ export type Database = {
           created_at?: string
           id?: string
           is_bought?: boolean
+          is_favorite?: boolean
           name?: string
           quantity?: string | null
+          recipe_source?: string | null
           user_id?: string
         }
         Relationships: []

@@ -46,13 +46,20 @@ export function useGroceryList(userId: string | undefined) {
     name: string,
     quantity?: string,
     category?: string,
-    storeIds?: string[]
+    storeIds?: string[],
+    recipeSource?: string
   ) => {
     if (!userId || !name.trim()) return;
 
     const { data, error } = await supabase
       .from("grocery_items")
-      .insert({ user_id: userId, name: name.trim(), quantity: quantity || null, category: category || null })
+      .insert({
+        user_id: userId,
+        name: name.trim(),
+        quantity: quantity || null,
+        category: category || null,
+        recipe_source: recipeSource || null,
+      })
       .select()
       .single();
 
@@ -87,6 +94,23 @@ export function useGroceryList(userId: string | undefined) {
     }
   }, [items]);
 
+  const toggleFavorite = useCallback(async (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    const newVal = !item.is_favorite;
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, is_favorite: newVal } : i)));
+
+    const { error } = await supabase
+      .from("grocery_items")
+      .update({ is_favorite: newVal })
+      .eq("id", id);
+
+    if (error) {
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, is_favorite: !newVal } : i)));
+      toast.error("Failed to update item");
+    }
+  }, [items]);
+
   const removeItem = useCallback(async (id: string) => {
     const backup = items;
     setItems((prev) => prev.filter((i) => i.id !== id));
@@ -114,7 +138,6 @@ export function useGroceryList(userId: string | undefined) {
   }, [userId, items]);
 
   const updateItemStores = useCallback(async (itemId: string, storeIds: string[]) => {
-    // Delete existing, insert new
     await supabase.from("item_store_availability").delete().eq("item_id", itemId);
     if (storeIds.length > 0) {
       await supabase
@@ -125,7 +148,7 @@ export function useGroceryList(userId: string | undefined) {
   }, []);
 
   const addBulkItems = useCallback(async (
-    itemsToAdd: { name: string; quantity?: string; category?: string }[]
+    itemsToAdd: { name: string; quantity?: string; category?: string; recipeSource?: string }[]
   ) => {
     if (!userId || itemsToAdd.length === 0) return;
 
@@ -134,6 +157,7 @@ export function useGroceryList(userId: string | undefined) {
       name: item.name,
       quantity: item.quantity || null,
       category: item.category || null,
+      recipe_source: item.recipeSource || null,
     }));
 
     const { data, error } = await supabase
@@ -162,6 +186,7 @@ export function useGroceryList(userId: string | undefined) {
     loading,
     addItem,
     toggleBought,
+    toggleFavorite,
     removeItem,
     clearBought,
     updateItemStores,
