@@ -636,7 +636,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
                 onChange={setEditIngredients}
               />
             ) : (
-              <ul className="space-y-1">
+              <ul className="space-y-0.5">
                 {scaledIngredients.map((ing, i) => {
                   const isHeader = isIngredientHeader(ing);
                   if (isHeader) {
@@ -647,29 +647,53 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
                     );
                   }
                   const isHighlighted = highlightedIngredients.has(i);
+                  const isAdded = addedIngredients.has(i);
                   return (
-                    <li
+                    <ShoppableIngredientRow
                       key={i}
-                      className={`flex items-center gap-2.5 text-sm py-1 px-2 rounded transition-all duration-300 origin-left ${
-                        isHighlighted
-                          ? "bg-kitchen-herb-light scale-[1.03] border-l-4 border-kitchen-herb"
-                          : "border-l-4 border-transparent"
-                      }`}
-                    >
-                      <Checkbox
-                        checked={checkedIngredients.has(i)}
-                        onCheckedChange={(checked) => {
-                          const next = new Set(checkedIngredients);
-                          checked ? next.add(i) : next.delete(i);
-                          setCheckedIngredients(next);
-                        }}
-                      />
-                      <span className={checkedIngredients.has(i) ? "line-through text-muted-foreground" : ""}>
-                        {ing.amount && <span className="font-medium">{ing.amount} </span>}
-                        {ing.unit && <span className="text-muted-foreground">{ing.unit} </span>}
-                        {ing.name}
-                      </span>
-                    </li>
+                      index={i}
+                      name={ing.name}
+                      amount={ing.amount}
+                      unit={ing.unit}
+                      isChecked={checkedIngredients.has(i)}
+                      isHighlighted={isHighlighted}
+                      isAddedToList={isAdded}
+                      onToggleCheck={(checked) => {
+                        const next = new Set(checkedIngredients);
+                        checked ? next.add(i) : next.delete(i);
+                        setCheckedIngredients(next);
+                      }}
+                      onAddToList={() => {
+                        const qty = [ing.amount, ing.unit].filter(Boolean).join(" ");
+                        const recipeSource = recipe.title;
+
+                        // Optimistically mark as added
+                        setAddedIngredients((prev) => new Set(prev).add(i));
+
+                        addItem(ing.name, qty || undefined, undefined, undefined, recipeSource);
+
+                        toast.success(
+                          `Added ${qty ? qty + " " : ""}${ing.name} to Shopping List`,
+                          {
+                            action: {
+                              label: "Undo",
+                              onClick: () => {
+                                // Find the most recently added item matching this name
+                                const match = groceryItems.find(
+                                  (gi) => gi.name === ing.name && gi.recipe_source === recipe.title
+                                );
+                                if (match) removeItem(match.id);
+                                setAddedIngredients((prev) => {
+                                  const next = new Set(prev);
+                                  next.delete(i);
+                                  return next;
+                                });
+                              },
+                            },
+                          }
+                        );
+                      }}
+                    />
                   );
                 })}
               </ul>
