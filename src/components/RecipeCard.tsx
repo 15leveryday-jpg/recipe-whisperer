@@ -25,8 +25,8 @@ const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }:
       onClick={onClick}
       className="group w-full text-left bg-card rounded-lg shadow-card hover:shadow-elevated transition-all duration-300 overflow-hidden border border-border/30 animate-fade-in flex flex-col"
     >
-      {/* Image — fixed 4:3 aspect ratio */}
-      <div className="relative aspect-[4/3] overflow-hidden flex-shrink-0">
+      {/* Image — fixed square aspect ratio */}
+      <div className="relative aspect-square overflow-hidden flex-shrink-0">
         {recipe.image_url ? (
           <img src={recipe.image_url} alt={recipe.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
@@ -35,14 +35,14 @@ const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }:
           </div>
         )}
         {toTry && (
-          <span className="absolute top-2 left-2 bg-to-try text-to-try-foreground text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 shadow-elevated">
+          <span className="absolute top-2 left-2 bg-to-try text-to-try-foreground text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 shadow-elevated z-10">
             <Bookmark className="w-3 h-3" /> To Try
           </span>
         )}
         {onAddToWeek && (
           <button
             onClick={(e) => { e.stopPropagation(); onAddToWeek(recipe); }}
-            className={`absolute top-2 right-2 min-w-[44px] min-h-[44px] w-11 h-11 sm:w-8 sm:h-8 sm:min-w-0 sm:min-h-0 rounded-full flex items-center justify-center transition-all shadow-elevated ${
+            className={`absolute top-2 right-2 z-10 min-w-[44px] min-h-[44px] w-11 h-11 sm:w-8 sm:h-8 sm:min-w-0 sm:min-h-0 rounded-full flex items-center justify-center transition-all shadow-elevated ${
               isInWeek
                 ? "bg-primary text-primary-foreground"
                 : "bg-card/90 text-foreground hover:bg-primary hover:text-primary-foreground"
