@@ -222,6 +222,7 @@ export function useGroceryList(userId: string | undefined) {
     removeItem,
     clearBought,
     updateItemStores,
+    updateItem,
     addBulkItems,
     fetchItems,
     unboughtCount,

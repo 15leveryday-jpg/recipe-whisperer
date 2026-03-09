@@ -17,6 +17,7 @@ interface Props {
 export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite, onEdit }: Props) {
   const x = useMotionValue(0);
   const [swiping, setSwiping] = useState<"left" | "right" | null>(null);
+  const [didSwipe, setDidSwipe] = useState(false);
 
   // Background colors based on swipe direction
   const bgColor = useTransform(x, [-150, -SWIPE_THRESHOLD, 0, SWIPE_THRESHOLD, 150], [
