@@ -346,15 +346,19 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
         .insert({ recipe_id: recipe.id, user_id: user.id } as any);
       if (logErr) throw logErr;
 
-      // Update cook_count
+      // Update cook_count and remove to-try flag
+      const updates: Record<string, any> = { cook_count: newCount };
+      if (recipe.is_to_try) {
+        updates.is_to_try = false;
+      }
       const { error: updateErr } = await supabase
         .from("recipes")
-        .update({ cook_count: newCount } as any)
+        .update(updates as any)
         .eq("id", recipe.id);
       if (updateErr) throw updateErr;
 
       // Update parent state
-      onUpdate?.(recipe.id, { cook_count: newCount } as any);
+      onUpdate?.(recipe.id, updates as any);
 
       // Confetti!
       confetti({
