@@ -256,6 +256,7 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
   const { user } = useAuth();
   const { items: groceryItems, addItem, removeItem } = useGroceryList(user?.id);
   const [addedIngredients, setAddedIngredients] = useState<Set<number>>(new Set());
+  const [servingsMultiplier, setServingsMultiplier] = useState(1);
   const [useMetric, setUseMetric] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(recipe.title);
