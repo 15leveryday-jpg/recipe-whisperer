@@ -12,6 +12,7 @@ import { useMealPlan } from "@/hooks/useMealPlan";
 import AuthForm from "@/components/AuthForm";
 import { SwipeableGroceryItem } from "@/components/shopping/SwipeableGroceryItem";
 import { AddItemBar } from "@/components/shopping/AddItemBar";
+import { EditItemSheet } from "@/components/shopping/EditItemSheet";
 import type { GroceryItem, Store } from "@/types/grocery";
 
 const CATEGORY_ORDER = [
