@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, LogOut, X, Loader2, ShoppingBag } from "lucide-react";
+import { Plus, LogOut, Loader2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +16,7 @@ import FacetedFilters from "@/components/FacetedFilters";
 import MealPlanDock from "@/components/MealPlanDock";
 import MealPlanDrawer from "@/components/MealPlanDrawer";
 import type { Recipe } from "@/types/recipe";
-import type { WeightedRecipe, MatchedIngredient } from "@/hooks/useRecipes";
+import type { WeightedRecipe } from "@/hooks/useRecipes";
 
 const Index = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -70,8 +70,11 @@ const Index = () => {
 
   if (!user) return <AuthForm />;
 
-  const handleClearSearch = () => {
+  const hasActiveSearch = !!(localSearchQuery.trim() || searchResults);
+
+  const handleResetAll = () => {
     clearSearch();
+    clearAllFacets();
   };
 
   return (
@@ -79,7 +82,7 @@ const Index = () => {
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
           <h1 className="font-display text-xl sm:text-2xl md:text-3xl tracking-tight text-foreground">Recipe Vault</h1>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" className="relative min-h-[44px] min-w-[44px]" onClick={() => navigate("/shopping")}>
               <ShoppingBag className="w-5 h-5" />
               {unboughtCount > 0 && (
@@ -88,7 +91,7 @@ const Index = () => {
                 </span>
               )}
             </Button>
-            <Button onClick={() => setShowImport(true)} className="gap-1.5 sm:gap-2 min-h-[44px]">
+            <Button onClick={() => setShowImport(true)} className="gap-2 min-h-[44px]">
               <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Import</span><span className="sm:hidden">Add</span>
             </Button>
             <Button variant="ghost" size="icon" onClick={signOut} className="min-h-[44px] min-w-[44px]">
@@ -98,7 +101,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-4">
         <SearchBar
           onSearch={hybridSearch}
           onLocalSearch={setLocalSearchQuery}
@@ -113,47 +116,32 @@ const Index = () => {
           onClearAll={clearAllFacets}
           toTryActive={toTryActive}
           onToggleToTry={() => setToTryActive((v) => !v)}
+          hasActiveSearch={hasActiveSearch}
+          onClearSearch={handleResetAll}
         />
-
-        {searchResults && (
-          <button
-            onClick={handleClearSearch}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-3.5 h-3.5" /> Clear AI search
-          </button>
-        )}
 
         {loading || searchLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : recipes.length === 0 ? (
-          <div className="text-center py-20 space-y-3">
+          <div className="text-center py-20 space-y-4">
             <p className="font-display text-xl sm:text-2xl text-foreground">
-              {searchResults || localSearchQuery ? "No recipes found" : "Your vault is empty"}
+              {hasActiveSearch ? "No recipes found" : "Your vault is empty"}
             </p>
             <p className="text-muted-foreground">
-              {searchResults || localSearchQuery
+              {hasActiveSearch
                 ? "No recipes match your search in titles or ingredients."
                 : "Import your first recipe to get started."}
             </p>
-            {(searchResults || localSearchQuery) ? (
-              <Button
-                onClick={() => { handleClearSearch(); clearAllFacets(); }}
-                variant="outline"
-                className="mt-4 gap-2 min-h-[44px]"
-              >
-                <X className="w-4 h-4" /> Clear Search & Filters
-              </Button>
-            ) : (
+            {!hasActiveSearch && (
               <Button onClick={() => setShowImport(true)} variant="outline" className="mt-4 gap-2">
                 <Plus className="w-4 h-4" /> Import Recipe
               </Button>
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
             {recipes.map((recipe) => {
               const weighted = recipe as WeightedRecipe;
               return (
