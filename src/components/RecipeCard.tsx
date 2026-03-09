@@ -76,6 +76,11 @@ const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }:
               <Users className="w-3 h-3" /> {recipe.servings}
             </span>
           )}
+          {ingredientCount > 0 && (
+            <span className="flex items-center gap-1">
+              <ListChecks className="w-3 h-3" /> {ingredientCount}
+            </span>
+          )}
         </div>
 
         {/* Match percentage bar — fixed height slot */}
