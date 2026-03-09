@@ -24,7 +24,7 @@ const RecipeCard = ({ recipe, matchPercentage, onClick, onAddToWeek, isInWeek }:
   return (
     <button
       onClick={onClick}
-      className="group w-full text-left bg-card rounded-lg shadow-card hover:shadow-elevated transition-all duration-300 overflow-hidden border border-border/30 animate-fade-in flex flex-col relative"
+      className="group w-full h-full text-left bg-card rounded-lg shadow-card hover:shadow-elevated transition-all duration-300 overflow-hidden border border-border/30 animate-fade-in flex flex-col relative"
     >
       {/* Overlay icons — positioned on the card root so they're always top-right */}
       {toTry && (
