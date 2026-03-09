@@ -1,21 +1,17 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Plus, Tag, X, Trash2, Check, Store as StoreIcon,
-  ShoppingCart, Loader2, ChevronDown,
+  ArrowLeft, Plus, X, Trash2, Check, ShoppingCart, Loader2, Store as StoreIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Popover, PopoverContent, PopoverTrigger,
-} from "@/components/ui/popover";
 import { useAuth } from "@/hooks/useAuth";
 import { useStores } from "@/hooks/useStores";
 import { useGroceryList } from "@/hooks/useGroceryList";
 import { useMealPlan } from "@/hooks/useMealPlan";
 import AuthForm from "@/components/AuthForm";
+import { SwipeableGroceryItem } from "@/components/shopping/SwipeableGroceryItem";
+import { AddItemBar } from "@/components/shopping/AddItemBar";
 import type { GroceryItem, Store } from "@/types/grocery";
 
 const CATEGORY_ORDER = [
@@ -23,52 +19,89 @@ const CATEGORY_ORDER = [
   "Pantry", "Beverages", "Snacks", "Other",
 ];
 
+interface StoreGroup {
+  store: Store | null; // null = "Any Store"
+  categories: Map<string, GroceryItem[]>;
+}
+
 export default function Shopping() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { stores, addStore, deleteStore } = useStores(user?.id);
   const {
-    items, loading, addItem, toggleBought, removeItem, clearBought,
-    updateItemStores, addBulkItems,
+    items, loading, addItem, toggleBought, toggleFavorite, removeItem, clearBought,
+    updateItemStores, addBulkItems, unboughtCount,
   } = useGroceryList(user?.id);
   const { meals } = useMealPlan(user?.id);
 
-  const [newItemName, setNewItemName] = useState("");
-  const [newItemQty, setNewItemQty] = useState("");
-  const [newItemCategory, setNewItemCategory] = useState("");
-  const [newItemStores, setNewItemStores] = useState<string[]>([]);
-  const [showTagPopover, setShowTagPopover] = useState(false);
-  const [activeStoreFilter, setActiveStoreFilter] = useState<string | null>(null);
   const [newStoreName, setNewStoreName] = useState("");
   const [showNewStoreInput, setShowNewStoreInput] = useState(false);
-  const [editingStoresItemId, setEditingStoresItemId] = useState<string | null>(null);
+  const [activeStoreFilter, setActiveStoreFilter] = useState<string | null>(null);
 
-  const filteredItems = useMemo(() => {
-    if (!activeStoreFilter) return items;
-    return items.filter(
-      (i) => i.store_ids.length === 0 || i.store_ids.includes(activeStoreFilter)
-    );
-  }, [items, activeStoreFilter]);
+  // Group items: Store → Category
+  const storeGroups = useMemo(() => {
+    const groups = new Map<string, { store: Store | null; items: GroceryItem[] }>();
 
-  const groupedItems = useMemo(() => {
-    const groups = new Map<string, GroceryItem[]>();
+    // "Any Store" group for items with no store assignment
+    groups.set("__any__", { store: null, items: [] });
+
+    // Initialize store groups
+    stores.forEach((s) => groups.set(s.id, { store: s, items: [] }));
+
     items.forEach((item) => {
-      if (activeStoreFilter && item.store_ids.length > 0 && !item.store_ids.includes(activeStoreFilter)) return;
-      const cat = item.category || "Other";
-      const arr = groups.get(cat) ?? [];
-      arr.push(item);
-      groups.set(cat, arr);
-    });
-    const sorted = new Map<string, GroceryItem[]>();
-    CATEGORY_ORDER.forEach((cat) => {
-      if (groups.has(cat)) {
-        sorted.set(cat, groups.get(cat)!);
-        groups.delete(cat);
+      if (item.store_ids.length === 0) {
+        groups.get("__any__")!.items.push(item);
+      } else {
+        item.store_ids.forEach((sid) => {
+          const group = groups.get(sid);
+          if (group) group.items.push(item);
+        });
       }
     });
-    groups.forEach((val, key) => sorted.set(key, val));
-    return sorted;
-  }, [items, activeStoreFilter]);
+
+    // Convert to StoreGroup with category sub-grouping
+    const result: StoreGroup[] = [];
+
+    const buildCategoryMap = (groupItems: GroceryItem[]) => {
+      const cats = new Map<string, GroceryItem[]>();
+      groupItems.forEach((item) => {
+        const cat = item.category || "Other";
+        const arr = cats.get(cat) ?? [];
+        arr.push(item);
+        cats.set(cat, arr);
+      });
+      // Sort by CATEGORY_ORDER
+      const sorted = new Map<string, GroceryItem[]>();
+      CATEGORY_ORDER.forEach((cat) => {
+        if (cats.has(cat)) { sorted.set(cat, cats.get(cat)!); cats.delete(cat); }
+      });
+      cats.forEach((val, key) => sorted.set(key, val));
+      return sorted;
+    };
+
+    // Named stores first
+    stores.forEach((s) => {
+      const g = groups.get(s.id)!;
+      if (g.items.length > 0) {
+        result.push({ store: s, categories: buildCategoryMap(g.items) });
+      }
+    });
+
+    // "Any Store" last
+    const anyGroup = groups.get("__any__")!;
+    if (anyGroup.items.length > 0) {
+      result.push({ store: null, categories: buildCategoryMap(anyGroup.items) });
+    }
+
+    // Apply store filter
+    if (activeStoreFilter) {
+      return result.filter((g) =>
+        g.store?.id === activeStoreFilter || (activeStoreFilter === "__any__" && !g.store)
+      );
+    }
+
+    return result;
+  }, [items, stores, activeStoreFilter]);
 
   if (authLoading) {
     return (
@@ -78,15 +111,6 @@ export default function Shopping() {
     );
   }
   if (!user) return <AuthForm />;
-
-  const handleAddItem = async () => {
-    if (!newItemName.trim()) return;
-    await addItem(newItemName, newItemQty, newItemCategory || undefined, newItemStores);
-    setNewItemName("");
-    setNewItemQty("");
-    setNewItemCategory("");
-    setNewItemStores([]);
-  };
 
   const handleAddStore = async () => {
     if (!newStoreName.trim()) return;
@@ -100,15 +124,12 @@ export default function Shopping() {
     const allIngredients = meals.flatMap((recipe) =>
       recipe.ingredients
         .filter((ing) => !ing.is_header)
-        .map((ing) => {
-          const parts = [ing.amount, ing.unit, ing.name].filter(Boolean).join(" ");
-          return {
-            name: ing.name || parts,
-            quantity: [ing.amount, ing.unit].filter(Boolean).join(" ") || undefined,
-          };
-        })
+        .map((ing) => ({
+          name: ing.name || [ing.amount, ing.unit, ing.name].filter(Boolean).join(" "),
+          quantity: [ing.amount, ing.unit].filter(Boolean).join(" ") || undefined,
+          recipeSource: recipe.title,
+        }))
     );
-    // Deduplicate by lowercase name
     const seen = new Set<string>();
     const unique = allIngredients.filter((ing) => {
       const key = ing.name.toLowerCase().trim();
@@ -119,360 +140,175 @@ export default function Shopping() {
     await addBulkItems(unique);
   };
 
-  const toggleStoreForNewItem = (storeId: string) => {
-    setNewItemStores((prev) =>
-      prev.includes(storeId) ? prev.filter((s) => s !== storeId) : [...prev, storeId]
-    );
-  };
-
-  const getStoreById = (id: string) => stores.find((s) => s.id === id);
-
-  const unboughtCount = filteredItems.filter((i) => !i.is_bought).length;
-  const boughtCount = filteredItems.filter((i) => i.is_bought).length;
+  const boughtCount = items.filter((i) => i.is_bought).length;
+  const totalFiltered = storeGroups.reduce(
+    (sum, g) => sum + [...g.categories.values()].reduce((s, arr) => s + arr.length, 0), 0
+  );
 
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    <div className="min-h-screen bg-background overflow-x-hidden pb-28">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/90 backdrop-blur-md border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="min-h-[44px] min-w-[44px]">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
               <h1 className="font-display text-xl sm:text-2xl tracking-tight text-foreground">Shopping List</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {unboughtCount} item{unboughtCount !== 1 ? "s" : ""} remaining
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5">
             {meals.length > 0 && (
               <Button variant="outline" size="sm" onClick={handleGenerateFromMealPlan} className="gap-1.5 min-h-[44px]">
-                <ShoppingCart className="w-3.5 h-3.5" /> <span className="hidden sm:inline">From Meal Plan</span><span className="sm:hidden">Plan</span>
+                <ShoppingCart className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">From Meal Plan</span>
+                <span className="sm:hidden">Plan</span>
               </Button>
             )}
             {boughtCount > 0 && (
               <Button variant="ghost" size="sm" className="text-destructive min-h-[44px]" onClick={clearBought}>
-                <Trash2 className="w-3.5 h-3.5 sm:mr-1" /> <span className="hidden sm:inline">Clear Bought</span>
+                <Trash2 className="w-3.5 h-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">Clear Bought</span>
               </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Store Filter Bar */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-2">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+            <Button
+              variant={activeStoreFilter === null ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveStoreFilter(null)}
+              className="shrink-0 h-8 text-xs"
+            >
+              All
+            </Button>
+            {stores.map((store) => (
+              <Button
+                key={store.id}
+                variant={activeStoreFilter === store.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveStoreFilter(activeStoreFilter === store.id ? null : store.id)}
+                className="shrink-0 gap-1.5 h-8 text-xs"
+              >
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: store.color }} />
+                {store.name}
+              </Button>
+            ))}
+            {!showNewStoreInput ? (
+              <Button variant="ghost" size="sm" onClick={() => setShowNewStoreInput(true)} className="shrink-0 text-muted-foreground h-8 text-xs">
+                <Plus className="w-3 h-3 mr-1" /> Store
+              </Button>
+            ) : (
+              <div className="flex gap-1 shrink-0 items-center">
+                <Input
+                  value={newStoreName}
+                  onChange={(e) => setNewStoreName(e.target.value)}
+                  placeholder="Store name"
+                  className="w-28 h-7 text-xs"
+                  autoFocus
+                  onKeyDown={(e) => e.key === "Enter" && handleAddStore()}
+                />
+                <Button size="sm" variant="default" onClick={handleAddStore} className="h-7 px-2">
+                  <Check className="w-3 h-3" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setShowNewStoreInput(false); setNewStoreName(""); }} className="h-7 px-2">
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
             )}
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6">
-        {/* Store Filter Bar */}
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mb-1">
-          <Button
-            variant={activeStoreFilter === null ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveStoreFilter(null)}
-            className="shrink-0 min-h-[44px] sm:min-h-0"
-          >
-            All
-          </Button>
-          {stores.map((store) => (
-            <Button
-              key={store.id}
-              variant={activeStoreFilter === store.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveStoreFilter(
-                activeStoreFilter === store.id ? null : store.id
-              )}
-              className="shrink-0 gap-1.5 min-h-[44px] sm:min-h-0"
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: store.color }}
-              />
-              {store.name}
-            </Button>
-          ))}
-          {!showNewStoreInput ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowNewStoreInput(true)}
-              className="shrink-0 text-muted-foreground"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1" /> Store
-            </Button>
-          ) : (
-            <div className="flex gap-1.5 shrink-0 items-center py-0.5">
-              <Input
-                value={newStoreName}
-                onChange={(e) => setNewStoreName(e.target.value)}
-                placeholder="Store name"
-                className="w-32 h-8 text-sm"
-                autoFocus
-                onKeyDown={(e) => e.key === "Enter" && handleAddStore()}
-              />
-              <Button size="sm" variant="default" onClick={handleAddStore} className="h-8 px-2">
-                <Check className="w-3.5 h-3.5" />
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => { setShowNewStoreInput(false); setNewStoreName(""); }} className="h-8 px-2">
-                <X className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
-
-        {/* Quick Add */}
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <div className="flex gap-2">
-            <Input
-              value={newItemName}
-              onChange={(e) => setNewItemName(e.target.value)}
-              placeholder="Add an item..."
-              className="flex-1"
-              onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-            />
-            <Input
-              value={newItemQty}
-              onChange={(e) => setNewItemQty(e.target.value)}
-              placeholder="Qty"
-              className="w-20"
-              onKeyDown={(e) => e.key === "Enter" && handleAddItem()}
-            />
-            <Button onClick={handleAddItem} disabled={!newItemName.trim()}>
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* Category & store tags row */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1 text-xs h-7">
-                  <ChevronDown className="w-3 h-3" />
-                  {newItemCategory || "Category"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-44 p-2" align="start">
-                {CATEGORY_ORDER.map((cat) => (
-                  <button
-                    key={cat}
-                    className="w-full text-left text-sm px-2 py-1.5 rounded hover:bg-accent transition-colors"
-                    onClick={() => setNewItemCategory(cat)}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
-
-            {stores.length > 0 && (
-              <Popover open={showTagPopover} onOpenChange={setShowTagPopover}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1 text-xs h-7">
-                    <Tag className="w-3 h-3" />
-                    {newItemStores.length > 0 ? `${newItemStores.length} store${newItemStores.length > 1 ? "s" : ""}` : "Stores"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-48 p-2" align="start">
-                  {stores.map((store) => (
-                    <label
-                      key={store.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer transition-colors"
-                    >
-                      <Checkbox
-                        checked={newItemStores.includes(store.id)}
-                        onCheckedChange={() => toggleStoreForNewItem(store.id)}
-                      />
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: store.color }}
-                      />
-                      <span className="text-sm">{store.name}</span>
-                    </label>
-                  ))}
-                </PopoverContent>
-              </Popover>
-            )}
-
-            {newItemStores.map((sid) => {
-              const store = getStoreById(sid);
-              if (!store) return null;
-              return (
-                <Badge
-                  key={sid}
-                  variant="secondary"
-                  className="text-xs gap-1 cursor-pointer"
-                  onClick={() => toggleStoreForNewItem(sid)}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: store.color }} />
-                  {store.name}
-                  <X className="w-2.5 h-2.5" />
-                </Badge>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Items list */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-1">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : totalFiltered === 0 ? (
           <div className="text-center py-16 space-y-3">
             <ShoppingCart className="w-12 h-12 text-muted-foreground/30 mx-auto" />
             <p className="font-display text-xl text-foreground">List is empty</p>
             <p className="text-muted-foreground text-sm">
-              Add items manually or generate from your meal plan.
+              Add items below or generate from your meal plan.
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {[...groupedItems.entries()].map(([category, catItems]) => {
-              const unbought = catItems.filter((i) => !i.is_bought);
-              const bought = catItems.filter((i) => i.is_bought);
-
-              return (
-                <div key={category}>
-                  <h3 className="font-display text-sm uppercase tracking-wider text-muted-foreground mb-2">
-                    {category}
-                  </h3>
-                  <div className="space-y-1">
-                    {unbought.map((item) => (
-                      <GroceryItemRow
-                        key={item.id}
-                        item={item}
-                        stores={stores}
-                        onToggle={toggleBought}
-                        onRemove={removeItem}
-                        onEditStores={(id) => setEditingStoresItemId(
-                          editingStoresItemId === id ? null : id
-                        )}
-                        isEditingStores={editingStoresItemId === item.id}
-                        onUpdateStores={updateItemStores}
+          storeGroups.map((group, gi) => (
+            <div key={group.store?.id ?? "__any__"} className="mb-2">
+              {/* Sticky Store Header */}
+              <div className="sticky top-[108px] z-20 bg-background/95 backdrop-blur-sm py-2 -mx-4 px-4 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  {group.store ? (
+                    <>
+                      <span
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: group.store.color }}
                       />
-                    ))}
-                    {bought.map((item) => (
-                      <GroceryItemRow
-                        key={item.id}
-                        item={item}
-                        stores={stores}
-                        onToggle={toggleBought}
-                        onRemove={removeItem}
-                        onEditStores={(id) => setEditingStoresItemId(
-                          editingStoresItemId === id ? null : id
-                        )}
-                        isEditingStores={editingStoresItemId === item.id}
-                        onUpdateStores={updateItemStores}
-                      />
-                    ))}
-                  </div>
+                      <h2 className="font-display text-base font-semibold text-foreground tracking-tight">
+                        {group.store.name}
+                      </h2>
+                    </>
+                  ) : (
+                    <>
+                      <StoreIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                      <h2 className="font-display text-base font-semibold text-muted-foreground tracking-tight">
+                        Any Store
+                      </h2>
+                    </>
+                  )}
+                  <span className="text-[11px] text-muted-foreground/60 ml-auto">
+                    {[...group.categories.values()].reduce((s, a) => s + a.filter((i) => !i.is_bought).length, 0)} left
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+
+              {/* Category sub-groups */}
+              {[...group.categories.entries()].map(([category, catItems]) => {
+                const unbought = catItems.filter((i) => !i.is_bought);
+                const bought = catItems.filter((i) => i.is_bought);
+                return (
+                  <div key={category} className="mt-2">
+                    <p className="text-[11px] uppercase tracking-wider text-muted-foreground/70 font-medium px-1 mb-1">
+                      {category}
+                    </p>
+                    <div className="space-y-0.5">
+                      {unbought.map((item) => (
+                        <SwipeableGroceryItem
+                          key={item.id}
+                          item={item}
+                          onToggle={toggleBought}
+                          onRemove={removeItem}
+                          onFavorite={toggleFavorite}
+                        />
+                      ))}
+                      {bought.map((item) => (
+                        <SwipeableGroceryItem
+                          key={item.id}
+                          item={item}
+                          onToggle={toggleBought}
+                          onRemove={removeItem}
+                          onFavorite={toggleFavorite}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))
         )}
       </main>
-    </div>
-  );
-}
 
-function GroceryItemRow({
-  item,
-  stores,
-  onToggle,
-  onRemove,
-  onEditStores,
-  isEditingStores,
-  onUpdateStores,
-}: {
-  item: GroceryItem;
-  stores: Store[];
-  onToggle: (id: string) => void;
-  onRemove: (id: string) => void;
-  onEditStores: (id: string) => void;
-  isEditingStores: boolean;
-  onUpdateStores: (id: string, storeIds: string[]) => void;
-}) {
-  return (
-    <div className="group">
-      <div
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
-          item.is_bought
-            ? "bg-muted/50 opacity-60"
-            : "bg-card hover:bg-accent/30"
-        }`}
-      >
-        <Checkbox
-          checked={item.is_bought}
-          onCheckedChange={() => onToggle(item.id)}
-          className="shrink-0"
-        />
-        <div className="flex-1 min-w-0">
-          <span className={`text-sm ${item.is_bought ? "line-through text-muted-foreground" : "text-foreground"}`}>
-            {item.name}
-          </span>
-          {item.quantity && (
-            <span className="text-xs text-muted-foreground ml-2">({item.quantity})</span>
-          )}
-          {/* Store dots */}
-          {item.store_ids.length > 0 && (
-            <span className="inline-flex gap-1 ml-2">
-              {item.store_ids.map((sid) => {
-                const s = stores.find((st) => st.id === sid);
-                return s ? (
-                  <span
-                    key={sid}
-                    className="w-2 h-2 rounded-full inline-block"
-                    style={{ backgroundColor: s.color }}
-                    title={s.name}
-                  />
-                ) : null;
-              })}
-            </span>
-          )}
-          {item.store_ids.length === 0 && (
-            <span className="text-xs text-muted-foreground/60 ml-2 italic">any store</span>
-          )}
-        </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {stores.length > 0 && (
-            <Button
-              variant="ghost" size="icon" className="h-7 w-7"
-              onClick={() => onEditStores(item.id)}
-            >
-              <Tag className="w-3 h-3" />
-            </Button>
-          )}
-          <Button
-            variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-            onClick={() => onRemove(item.id)}
-          >
-            <Trash2 className="w-3 h-3" />
-          </Button>
-        </div>
-      </div>
-      {/* Inline store editor */}
-      {isEditingStores && (
-        <div className="flex flex-wrap gap-1.5 px-10 py-2">
-          {stores.map((store) => {
-            const active = item.store_ids.includes(store.id);
-            return (
-              <Badge
-                key={store.id}
-                variant={active ? "default" : "outline"}
-                className="cursor-pointer text-xs gap-1"
-                onClick={() => {
-                  const newIds = active
-                    ? item.store_ids.filter((s) => s !== store.id)
-                    : [...item.store_ids, store.id];
-                  onUpdateStores(item.id, newIds);
-                }}
-              >
-                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: store.color }} />
-                {store.name}
-              </Badge>
-            );
-          })}
-        </div>
-      )}
+      {/* Fixed Add Bar at bottom */}
+      <AddItemBar stores={stores} onAdd={addItem} />
     </div>
   );
 }
