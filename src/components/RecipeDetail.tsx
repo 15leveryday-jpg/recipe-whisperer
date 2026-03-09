@@ -346,10 +346,17 @@ const RecipeDetail = ({ recipe, onClose, onUpdate, onDelete, allTags = [], onNex
         .insert({ recipe_id: recipe.id, user_id: user.id } as any);
       if (logErr) throw logErr;
 
-      // Update cook_count and remove to-try flag
+      // Update cook_count and remove to-try flag + tag
       const updates: Record<string, any> = { cook_count: newCount };
       if (recipe.is_to_try) {
         updates.is_to_try = false;
+      }
+      // Also strip "To-Try" / "to-try" from nutritional_tags
+      const filteredTags = (recipe.nutritional_tags || []).filter(
+        (t) => t.toLowerCase() !== "to-try"
+      );
+      if (filteredTags.length !== (recipe.nutritional_tags || []).length) {
+        updates.nutritional_tags = filteredTags;
       }
       const { error: updateErr } = await supabase
         .from("recipes")
