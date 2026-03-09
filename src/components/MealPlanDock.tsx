@@ -106,7 +106,7 @@ const MealPlanDock = ({ meals, onExpand, onRemove, onReorder }: MealPlanDockProp
   if (meals.length === 0) return null;
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-40 flex justify-center pointer-events-none pb-[env(safe-area-inset-bottom)]">
+    <div className="fixed bottom-0 inset-x-0 z-40 flex justify-center pointer-events-none" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}>
       <div className="pointer-events-auto inline-flex flex-col mx-4 mb-4 bg-card border border-border rounded-2xl shadow-float p-3 animate-fade-in max-w-[calc(100vw-2rem)]">
         {/* Header */}
         <div className="flex items-center justify-between mb-2 px-1 gap-4">
