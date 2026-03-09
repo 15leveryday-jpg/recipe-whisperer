@@ -14,7 +14,7 @@ interface Props {
   onEdit?: (item: GroceryItem) => void;
 }
 
-export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite }: Props) {
+export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite, onEdit }: Props) {
   const x = useMotionValue(0);
   const [swiping, setSwiping] = useState<"left" | "right" | null>(null);
 
