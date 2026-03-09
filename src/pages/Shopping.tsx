@@ -31,9 +31,11 @@ export default function Shopping() {
   const { stores, addStore, deleteStore } = useStores(user?.id);
   const {
     items, loading, addItem, toggleBought, toggleFavorite, removeItem, clearBought,
-    updateItemStores, addBulkItems, unboughtCount,
+    updateItemStores, updateItem, addBulkItems, unboughtCount,
   } = useGroceryList(user?.id);
   const { meals } = useMealPlan(user?.id);
+
+  const [editingItem, setEditingItem] = useState<GroceryItem | null>(null);
 
   const [newStoreName, setNewStoreName] = useState("");
   const [showNewStoreInput, setShowNewStoreInput] = useState(false);

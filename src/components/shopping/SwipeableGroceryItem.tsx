@@ -78,8 +78,9 @@ export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite, onE
         dragElastic={0.4}
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
+        onTap={handleTap}
         style={{ x }}
-        className={`relative z-10 flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors cursor-grab active:cursor-grabbing ${
+        className={`relative z-10 flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
           item.is_bought
             ? "bg-muted/60 opacity-50"
             : "bg-card"
