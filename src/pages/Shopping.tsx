@@ -12,6 +12,7 @@ import { useMealPlan } from "@/hooks/useMealPlan";
 import AuthForm from "@/components/AuthForm";
 import { SwipeableGroceryItem } from "@/components/shopping/SwipeableGroceryItem";
 import { AddItemBar } from "@/components/shopping/AddItemBar";
+import { EditItemSheet } from "@/components/shopping/EditItemSheet";
 import type { GroceryItem, Store } from "@/types/grocery";
 
 const CATEGORY_ORDER = [
@@ -30,9 +31,11 @@ export default function Shopping() {
   const { stores, addStore, deleteStore } = useStores(user?.id);
   const {
     items, loading, addItem, toggleBought, toggleFavorite, removeItem, clearBought,
-    updateItemStores, addBulkItems, unboughtCount,
+    updateItemStores, updateItem, addBulkItems, unboughtCount,
   } = useGroceryList(user?.id);
   const { meals } = useMealPlan(user?.id);
+
+  const [editingItem, setEditingItem] = useState<GroceryItem | null>(null);
 
   const [newStoreName, setNewStoreName] = useState("");
   const [showNewStoreInput, setShowNewStoreInput] = useState(false);
@@ -287,6 +290,7 @@ export default function Shopping() {
                           onToggle={toggleBought}
                           onRemove={removeItem}
                           onFavorite={toggleFavorite}
+                          onEdit={setEditingItem}
                         />
                       ))}
                       {bought.map((item) => (
@@ -296,6 +300,7 @@ export default function Shopping() {
                           onToggle={toggleBought}
                           onRemove={removeItem}
                           onFavorite={toggleFavorite}
+                          onEdit={setEditingItem}
                         />
                       ))}
                     </div>
@@ -306,6 +311,15 @@ export default function Shopping() {
           ))
         )}
       </main>
+
+      {/* Edit Item Sheet */}
+      <EditItemSheet
+        item={editingItem}
+        stores={stores}
+        open={!!editingItem}
+        onOpenChange={(open) => { if (!open) setEditingItem(null); }}
+        onSave={async (id, updates) => { await updateItem(id, updates); }}
+      />
 
       {/* Fixed Add Bar at bottom */}
       <AddItemBar stores={stores} onAdd={addItem} />

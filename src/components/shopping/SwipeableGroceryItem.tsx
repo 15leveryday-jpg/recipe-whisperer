@@ -11,11 +11,13 @@ interface Props {
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
   onFavorite: (id: string) => void;
+  onEdit?: (item: GroceryItem) => void;
 }
 
-export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite }: Props) {
+export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite, onEdit }: Props) {
   const x = useMotionValue(0);
   const [swiping, setSwiping] = useState<"left" | "right" | null>(null);
+  const [didSwipe, setDidSwipe] = useState(false);
 
   // Background colors based on swipe direction
   const bgColor = useTransform(x, [-150, -SWIPE_THRESHOLD, 0, SWIPE_THRESHOLD, 150], [
@@ -35,7 +37,15 @@ export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite }: P
     } else if (offset > SWIPE_THRESHOLD) {
       onFavorite(item.id);
     }
+    setDidSwipe(Math.abs(offset) > 10);
     setSwiping(null);
+  };
+
+  const handleTap = () => {
+    if (!didSwipe && onEdit) {
+      onEdit(item);
+    }
+    setDidSwipe(false);
   };
 
   const handleDrag = (_: any, info: PanInfo) => {
@@ -68,8 +78,9 @@ export function SwipeableGroceryItem({ item, onToggle, onRemove, onFavorite }: P
         dragElastic={0.4}
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
+        onTap={handleTap}
         style={{ x }}
-        className={`relative z-10 flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors cursor-grab active:cursor-grabbing ${
+        className={`relative z-10 flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors cursor-pointer ${
           item.is_bought
             ? "bg-muted/60 opacity-50"
             : "bg-card"

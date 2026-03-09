@@ -147,6 +147,38 @@ export function useGroceryList(userId: string | undefined) {
     setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, store_ids: storeIds } : i)));
   }, []);
 
+  const updateItem = useCallback(async (
+    id: string,
+    updates: { name?: string; quantity?: string | null; category?: string | null; store_ids?: string[] }
+  ) => {
+    const { store_ids, ...dbUpdates } = updates;
+    const backup = items.find((i) => i.id === id);
+    if (!backup) return;
+
+    // Optimistic update
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...updates } : i)));
+
+    // Update DB fields
+    if (Object.keys(dbUpdates).length > 0) {
+      const { error } = await supabase.from("grocery_items").update(dbUpdates).eq("id", id);
+      if (error) {
+        setItems((prev) => prev.map((i) => (i.id === id ? backup : i)));
+        toast.error("Failed to update item");
+        return;
+      }
+    }
+
+    // Update store assignments if changed
+    if (store_ids !== undefined) {
+      await supabase.from("item_store_availability").delete().eq("item_id", id);
+      if (store_ids.length > 0) {
+        await supabase
+          .from("item_store_availability")
+          .insert(store_ids.map((sid) => ({ item_id: id, store_id: sid })));
+      }
+    }
+  }, [items]);
+
   const addBulkItems = useCallback(async (
     itemsToAdd: { name: string; quantity?: string; category?: string; recipeSource?: string }[]
   ) => {
@@ -190,6 +222,7 @@ export function useGroceryList(userId: string | undefined) {
     removeItem,
     clearBought,
     updateItemStores,
+    updateItem,
     addBulkItems,
     fetchItems,
     unboughtCount,
