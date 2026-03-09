@@ -290,6 +290,7 @@ export default function Shopping() {
                           onToggle={toggleBought}
                           onRemove={removeItem}
                           onFavorite={toggleFavorite}
+                          onEdit={setEditingItem}
                         />
                       ))}
                       {bought.map((item) => (
@@ -299,6 +300,7 @@ export default function Shopping() {
                           onToggle={toggleBought}
                           onRemove={removeItem}
                           onFavorite={toggleFavorite}
+                          onEdit={setEditingItem}
                         />
                       ))}
                     </div>
@@ -309,6 +311,15 @@ export default function Shopping() {
           ))
         )}
       </main>
+
+      {/* Edit Item Sheet */}
+      <EditItemSheet
+        item={editingItem}
+        stores={stores}
+        open={!!editingItem}
+        onOpenChange={(open) => { if (!open) setEditingItem(null); }}
+        onSave={async (id, updates) => { await updateItem(id, updates); }}
+      />
 
       {/* Fixed Add Bar at bottom */}
       <AddItemBar stores={stores} onAdd={addItem} />
