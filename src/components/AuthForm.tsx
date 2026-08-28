@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import ForgotPassword from "./ForgotPassword";
 
 const AuthForm = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [showForgot, setShowForgot] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -32,6 +34,10 @@ const AuthForm = () => {
       setLoading(false);
     }
   };
+
+  if (showForgot) {
+    return <ForgotPassword onBack={() => setShowForgot(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -63,6 +69,15 @@ const AuthForm = () => {
             {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
             {isLogin ? "Sign In" : "Create Account"}
           </Button>
+          {isLogin && (
+            <button
+              type="button"
+              onClick={() => setShowForgot(true)}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Forgot password?
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setIsLogin(!isLogin)}
